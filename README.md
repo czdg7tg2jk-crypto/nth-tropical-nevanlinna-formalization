@@ -74,6 +74,14 @@ valid origin. Add `--compact` to redirect Mathlib reference pages to upstream
 documentation while keeping project API pages and search. Those redirects also
 link to the exact pinned Mathlib source; upstream documentation can change.
 
+For GitHub Pages, enable **Settings → Pages → GitHub Actions**, then run
+**Actions → Build reading website → Run workflow** on `main` with `deploy`
+checked. Pages availability for private repositories depends on the account's
+plan. A manual run with `deploy` unchecked only builds a downloadable
+`reading-website` artifact; it does not deploy. Private pushes skip cloud builds.
+Generated websites include dependency license notices and check their local
+links before upload.
+
 The four tools in `scripts/` have distinct roles:
 
 | Tool | Purpose |

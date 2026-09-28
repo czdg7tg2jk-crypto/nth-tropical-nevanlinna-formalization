@@ -17,6 +17,99 @@ from urllib.parse import quote, unquote, urlsplit, urlunsplit
 ROOT = Path(__file__).resolve().parents[1]
 MAPS = ("nth_tropical_nevanlinna_dependency_graph.html", "nth_tropical_nevanlinna_lean_structure.html")
 
+def dependency_packages(project):
+    packages = {}
+    for name in ("lake-manifest.json", "docbuild/lake-manifest.json"):
+        for package in json.loads((project / name).read_text())["packages"]:
+            if package.get("url") and package.get("rev"):
+                packages[package["name"].strip("«»")] = package
+    return packages
+
+
+def collect_blueprint_licenses(blueprint):
+    """Run with the Blueprint Python environment before assembling the site."""
+    from importlib.metadata import distribution
+    target = blueprint / "dependency-licenses"
+    for name in ("leanblueprint", "plasTeX"):
+        package = distribution(name)
+        found = []
+        for entry in package.files or []:
+            if entry.name.upper().startswith(("LICENSE", "COPYING", "NOTICE")):
+                destination = target / name / entry.name
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(package.locate_file(entry), destination)
+                found.append(entry.name)
+        if not found:
+            raise SystemExit(f"Missing installed license notices for {name}")
+    print("Collected Blueprint dependency licenses.")
+
+
+def copy_dependency_licenses(project, blueprint, output):
+    target = output / "dependency-licenses"
+    for name in dependency_packages(project):
+        for source in sorted((project / ".lake/packages" / name).glob("*")):
+            if source.is_file() and source.name.upper().startswith(("LICENSE", "COPYING", "NOTICE")):
+                destination = target / name / source.name
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source, destination)
+    supplied = blueprint / "dependency-licenses"
+    if not supplied.is_dir():
+        raise SystemExit("Collect Blueprint licenses with its Python environment before assembly.")
+    shutil.copytree(supplied, target, dirs_exist_ok=True)
+    for name in ("mathlib/LICENSE", "doc-gen4/LICENSE", "leanblueprint/LICENSE", "plasTeX/LICENSE"):
+        if not (target / name).is_file():
+            raise SystemExit(f"Missing dependency license: {name}")
+    links = "\n".join(
+        f'<li><a href="{quote(p.relative_to(target).as_posix())}">{html.escape(p.relative_to(target).as_posix())}</a></li>'
+        for p in sorted(target.rglob("*")) if p.is_file()
+    )
+    (target / "index.html").write_text(
+        '<!doctype html><html lang="en"><meta charset="utf-8">'
+        '<title>Third-party licenses</title><h1>Third-party licenses</h1>'
+        '<p>Dependency licenses and notices accompany the generated documentation. '
+        'Additional notices embedded in distributed assets are preserved.</p><ul>' + links + '</ul></html>\n'
+    )
+
+
+def github_source_links(site, project):
+    """Convert local documentation source URLs to pinned GitHub URLs."""
+    def git(*args):
+        return subprocess.check_output(["git", "-C", str(ROOT), *args], text=True).strip()
+    remote = git("remote", "get-url", "origin").removesuffix(".git")
+    remote = remote.replace("git@github.com:", "https://github.com/")
+    if not re.fullmatch(r"https://github.com/[\w.-]+/[\w.-]+", remote):
+        raise SystemExit("Hosted source links require a GitHub origin.")
+    revision = git("rev-parse", "HEAD")
+    packages = dependency_packages(project)
+    count = 0
+
+    def replace(match):
+        nonlocal count
+        parsed = re.fullmatch(r"(.*?\.lean)(?::(\d+)(?::\d+)?)?", html.unescape(match[1]))
+        if not parsed:
+            raise SystemExit("Unrecognized local source URL in API documentation.")
+        relative = Path("/" + parsed[1].lstrip("/")).resolve().relative_to(project.resolve())
+        parts = relative.parts
+        if parts[:2] == (".lake", "packages"):
+            package = packages[parts[2]]
+            url = package["url"].removesuffix(".git") + "/blob/" + package["rev"] + "/"
+            url += quote(Path(*parts[3:]).as_posix())
+        elif parts[0] in ("NthTropicalNevanlinna", "NthTropicalNevanlinna.lean"):
+            url = remote + "/blob/" + revision + "/" + quote(relative.as_posix())
+        else:
+            raise SystemExit("Unrecognized local source location in API documentation.")
+        if parsed[2]:
+            url += "#L" + parsed[2]
+        count += 1
+        return 'href="' + html.escape(url, quote=True) + '"'
+
+    for source in sorted((site / "docs").rglob("*.html")):
+        original = source.read_text()
+        updated = re.sub(r'href="vscode://file/([^"]+)"', replace, original)
+        if updated != original:
+            source.write_text(updated)
+    print(f"Converted {count} local source links to pinned GitHub links.")
+
 def verify_api_source(project):
     """Allow cached API reuse only for identical Lean sources and build inputs."""
     names = {"NthTropicalNevanlinna.lean", "lean-toolchain", "lakefile.toml", "lake-manifest.json",
@@ -91,7 +184,7 @@ def copy_api(source, destination, compact):
     print(f"Copied API documentation; {redirected} Mathlib pages link upstream.")
 
 
-def assemble(output, project, blueprint, pdf, compact=False):
+def assemble(output, project, blueprint, pdf, compact=False, source_links="local"):
     if output.exists():
         raise SystemExit(f"Output already exists; preserve it or choose a new path: {output}")
     verify_api_source(project)
@@ -111,6 +204,9 @@ def assemble(output, project, blueprint, pdf, compact=False):
     shutil.copytree(blueprint, output / "blueprint")
     copy_api(api, output / "docs", compact)
     repair_api_links(output)
+    copy_dependency_licenses(project, blueprint, output)
+    if source_links == "github":
+        github_source_links(output, project)
     shutil.copyfile(ROOT / "home_page/index.html", output / "index.html")
     shutil.copyfile(ROOT / "LICENSE", output / "LICENSE")
     shutil.copyfile(pdf, output / "blueprint.pdf")
@@ -127,11 +223,24 @@ def assemble(output, project, blueprint, pdf, compact=False):
                     ignore=shutil.ignore_patterns(".DS_Store", "__pycache__"))
     shutil.copyfile(ROOT / "NthTropicalNevanlinna.lean", output / "NthTropicalNevanlinna.lean")
     from check import check_site
-    check_site(output)
+    check_site(output, hosted=source_links == "github")
     size = sum(p.stat().st_size for p in output.rglob("*") if p.is_file())
     if compact and size >= 1_000_000_000:
         raise SystemExit(f"Compact website exceeds 1 GB: {size:,} bytes")
     print(f"Website: {output} ({size:,} bytes)")
+
+
+def build_api():
+    env = os.environ.copy()
+    env["DOCGEN_SRC"] = "vscode"
+    # The pinned doc-gen4 can reuse old HTML after updating its database.
+    # Build the documentation data, then explicitly render pages and search.
+    subprocess.run(["lake", "build", "NthTropicalNevanlinna:docInfo"],
+                   cwd=ROOT / "docbuild", env=env, check=True)
+    subprocess.run(["lake", "exe", "doc-gen4", "fromDb", "--build", ".lake/build",
+                    "--manifest", ".lake/build/doc-manifest.json", ".lake/build/api-docs.db",
+                    "NthTropicalNevanlinna", "Init", "Std", "Lake", "Lean"],
+                   cwd=ROOT / "docbuild", env=env, check=True)
 
 
 def build(args):
@@ -144,12 +253,12 @@ def build(args):
     for command in (["lake", "build"], ["leanblueprint", "pdf"], ["leanblueprint", "web"],
                     ["lake", "exe", "checkdecls", "blueprint/lean_decls"]):
         subprocess.run(command, cwd=ROOT, env=env, check=True)
-    if args.source_links == "local":
-        env["DOCGEN_SRC"] = "vscode"
-    else:
-        env.pop("DOCGEN_SRC", None)
-    subprocess.run(["lake", "build", "NthTropicalNevanlinna:docs"], cwd=ROOT / "docbuild", env=env, check=True)
-    assemble(args.output.resolve(), ROOT, ROOT / "blueprint/web", ROOT / "blueprint/print/print.pdf", args.compact)
+    blueprint_python = Path(shutil.which("leanblueprint", path=env["PATH"])).parent / "python"
+    subprocess.run([str(blueprint_python), str(Path(__file__).resolve()), "licenses"],
+                   cwd=ROOT, env=env, check=True)
+    build_api()
+    assemble(args.output.resolve(), ROOT, ROOT / "blueprint/web", ROOT / "blueprint/print/print.pdf",
+             args.compact, args.source_links)
 
 
 def main():
@@ -159,12 +268,13 @@ def main():
         command = commands.add_parser(name)
         command.add_argument("--output", type=Path, required=True, help="New output directory; never overwritten")
         command.add_argument("--compact", action="store_true", help="Link Mathlib reference pages upstream")
-        if name == "build":
-            command.add_argument("--source-links", choices=("local", "github"), default="local")
-        else:
+        command.add_argument("--source-links", choices=("local", "github"), default="local")
+        if name == "assemble":
             command.add_argument("--api-project", type=Path, default=ROOT)
             command.add_argument("--blueprint-dir", type=Path, default=ROOT / "blueprint/web")
             command.add_argument("--pdf", type=Path, default=ROOT / "blueprint/print/print.pdf")
+    commands.add_parser("licenses", help="Collect licenses using the Blueprint Python environment")
+    commands.add_parser("api", help="Build API documentation and refresh its pages and search index")
     serve = commands.add_parser("serve")
     serve.add_argument("directory", type=Path)
     serve.add_argument("--port", type=int, default=8000)
@@ -172,7 +282,12 @@ def main():
     if args.command == "build":
         build(args)
     elif args.command == "assemble":
-        assemble(args.output.resolve(), args.api_project.resolve(), args.blueprint_dir.resolve(), args.pdf.resolve(), args.compact)
+        assemble(args.output.resolve(), args.api_project.resolve(), args.blueprint_dir.resolve(),
+                 args.pdf.resolve(), args.compact, args.source_links)
+    elif args.command == "licenses":
+        collect_blueprint_licenses(ROOT / "blueprint/web")
+    elif args.command == "api":
+        build_api()
     else:
         if not (args.directory / "index.html").is_file():
             parser.error("directory must contain a built website")

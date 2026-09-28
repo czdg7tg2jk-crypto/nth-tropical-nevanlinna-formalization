@@ -1,4 +1,4 @@
-name: Compile blueprint
+name: Build reading website
 
 on:
   push:
@@ -23,6 +23,8 @@ permissions:
 
 jobs:
   build_project:
+    # Private pushes do not consume hosted build minutes. Manual builds remain opt-in.
+    if: github.event_name == 'workflow_dispatch' || github.event.repository.private == false
     runs-on: ubuntu-latest
     name: Build project
     steps:
@@ -65,16 +67,24 @@ jobs:
             pip install -r blueprint/requirements.txt
             leanblueprint pdf
             leanblueprint web
+            python scripts/site.py licenses
 
       - name: Compile Lean API documentation
-        working-directory: docbuild
-        run: lake build NthTropicalNevanlinna:docs
+        run: python3 scripts/site.py api
 
       - name: Check Blueprint declaration links
         run: lake exe checkdecls blueprint/lean_decls
 
       - name: Assemble and check website
-        run: python3 scripts/site.py assemble --compact --output "${RUNNER_TEMP}/nth-tropical-site"
+        run: python3 scripts/site.py assemble --compact --source-links github --output "${RUNNER_TEMP}/nth-tropical-site"
+
+      - name: Upload downloadable preview
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: reading-website
+          path: ${{ runner.temp }}/nth-tropical-site
+          retention-days: 7
+          if-no-files-found: error
 
       - name: Upload website
         if: github.event_name == 'workflow_dispatch' && inputs.deploy
@@ -93,6 +103,9 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Check GitHub Pages configuration
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+
       - name: Deploy reviewed website
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e

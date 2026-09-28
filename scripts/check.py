@@ -104,14 +104,24 @@ class Page(HTMLParser):
                 self.links.append(attrs[key])
 
 
-def check_site(site):
+def check_site(site, hosted=False):
     root = Path(site).resolve()
     required = ["index.html", "blueprint/index.html", "blueprint/dep_graph_document.html",
-                "blueprint.pdf", "LICENSE", "home_page/arxiv-2602.03500v1.pdf", "docs/index.html",
+                "blueprint.pdf", "LICENSE", "dependency-licenses/index.html",
+                "dependency-licenses/mathlib/LICENSE", "dependency-licenses/doc-gen4/LICENSE",
+                "dependency-licenses/leanblueprint/LICENSE", "dependency-licenses/plasTeX/LICENSE",
+                "home_page/arxiv-2602.03500v1.pdf", "docs/index.html",
                 "docs/search.html", "docs/declarations/declaration-data.bmp",
                 "home_page/nth_tropical_nevanlinna_dependency_graph.html",
                 "home_page/nth_tropical_nevanlinna_lean_structure.html"]
     errors = [f"Missing reading asset: {name}" for name in required if not (root / name).is_file()]
+    if hosted:
+        for source in root.rglob("*"):
+            if source.is_file() and source.suffix in (".html", ".js", ".json", ".bmp", ".txt"):
+                data = source.read_bytes()
+                local_link = re.search(rb'''(?:href|src)\s*=\s*["']file:///''', data)
+                if local_link or any(marker in data for marker in (b"vscode://file/", b"/Users/")):
+                    errors.append(f"Hosted website contains a local file reference: {source.relative_to(root)}")
     for name in ("LICENSE", "home_page/arxiv-2602.03500v1.pdf"):
         if (root / name).is_file() and (root / name).read_bytes() != (ROOT / name).read_bytes():
             errors.append(f"Website asset differs from source: {name}")
@@ -193,13 +203,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--site", type=Path, help="Also check a generated website")
     parser.add_argument("--tracked", action="store_true", help="Require reading targets to be Git-tracked")
+    parser.add_argument("--hosted", action="store_true", help="Reject local file references in the website")
     args = parser.parse_args()
+    if args.hosted and not args.site:
+        parser.error("--hosted requires --site")
     check_lean()
     check_reading_links(args.tracked)
     for name in ("generate_lean_module_graph.py", "make_mathematical_graph_standalone.py"):
         subprocess.run([sys.executable, str(ROOT / "scripts" / name), "--check"], check=True)
     if args.site:
-        check_site(args.site)
+        check_site(args.site, hosted=args.hosted)
 
 
 if __name__ == "__main__":
