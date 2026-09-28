@@ -14,6 +14,11 @@ on:
         type: boolean
         required: false
         default: false
+      reviewed_snapshot:
+        description: 'Use verified preview r3 (requires deploy and unchanged publication sources)'
+        type: boolean
+        required: false
+        default: false
 
 # Cancel previous runs if a new commit is pushed to the same PR or branch
 concurrency:
@@ -26,7 +31,7 @@ permissions:
 jobs:
   build_project:
     # Private pushes do not consume hosted build minutes. Manual builds remain opt-in.
-    if: github.event_name == 'workflow_dispatch' || github.event.repository.private == false
+    if: inputs.reviewed_snapshot != true && (github.event_name == 'workflow_dispatch' || github.event.repository.private == false)
     runs-on: ubuntu-latest
     name: Build project
     steps:
@@ -97,9 +102,50 @@ jobs:
         with:
           path: ${{ runner.temp }}/nth-tropical-site
 
+  reviewed_snapshot:
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy && inputs.reviewed_snapshot && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    name: Verify reviewed website snapshot
+    steps:
+      - name: Checkout current sources
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Require unchanged publication sources
+        run: |
+          git diff --exit-code 8294d8b94ddf782294d96f670c657bbeb0ca928b HEAD -- \
+            NthTropicalNevanlinna NthTropicalNevanlinna.lean blueprint home_page \
+            LICENSE lean-toolchain lakefile.toml lake-manifest.json docbuild
+
+      - name: Download and verify the reviewed snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p "${RUNNER_TEMP}/reviewed-snapshot"
+          gh release download private-review-20260928-r3 \
+            --pattern nth-tropical-nevanlinna-website-preview-r3.zip \
+            --dir "${RUNNER_TEMP}/reviewed-snapshot"
+          cd "${RUNNER_TEMP}/reviewed-snapshot"
+          echo '7ea8f92c6c85cbd9c49378c5a5d8e74c89b85a28da9728c9ca6b204be1ba9259  nth-tropical-nevanlinna-website-preview-r3.zip' | sha256sum --check
+          unzip -q nth-tropical-nevanlinna-website-preview-r3.zip
+          # The local launchers are unnecessary in the published static website.
+          rm nth-tropical-nevanlinna-preview/preview.py \
+            'nth-tropical-nevanlinna-preview/Open Preview.command' \
+            nth-tropical-nevanlinna-preview/README-preview.txt
+
+      - name: Check sources, website links, and licenses
+        run: python3 scripts/check.py --tracked --hosted --site "${RUNNER_TEMP}/reviewed-snapshot/nth-tropical-nevanlinna-preview"
+
+      - name: Upload verified website
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
+        with:
+          path: ${{ runner.temp }}/reviewed-snapshot/nth-tropical-nevanlinna-preview
+
   deploy:
-    if: github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/main'
-    needs: build_project
+    if: always() && github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/main' && (needs.build_project.result == 'success' || needs.reviewed_snapshot.result == 'success')
+    needs: [build_project, reviewed_snapshot]
     runs-on: ubuntu-latest
     permissions:
       pages: write
