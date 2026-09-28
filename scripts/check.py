@@ -141,6 +141,8 @@ def check_site(site):
         if not source.is_file():
             errors.append(f"Missing page: {source.relative_to(root)}")
             continue
+        if re.search(r"\\(?:begin|end)\s*\{bgroup\}", source.read_text()):
+            errors.append(f"{source.relative_to(root)}: unsupported TeX bgroup environment in generated mathematics")
         for link in page(source).links:
             url = urlsplit(link)
             if url.scheme or url.netloc:
