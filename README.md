@@ -5,17 +5,12 @@ and Chengliang Tan ([arXiv:2602.03500v1](https://arxiv.org/abs/2602.03500v1)).
 
 ## Read
 
+- [Website](https://czdg7tg2jk-crypto.github.io/nth-tropical-nevanlinna-formalization/) · [Blueprint — HTML](https://czdg7tg2jk-crypto.github.io/nth-tropical-nevanlinna-formalization/blueprint/)
+- Dependency graphs: [Mathematics](https://czdg7tg2jk-crypto.github.io/nth-tropical-nevanlinna-formalization/home_page/nth_tropical_nevanlinna_dependency_graph.html) · [Formal proofs](https://czdg7tg2jk-crypto.github.io/nth-tropical-nevanlinna-formalization/blueprint/dep_graph_document.html) · [Lean modules](https://czdg7tg2jk-crypto.github.io/nth-tropical-nevanlinna-formalization/home_page/nth_tropical_nevanlinna_lean_structure.html)
+- [Lean API documentation](https://czdg7tg2jk-crypto.github.io/nth-tropical-nevanlinna-formalization/docs/)
 - [Blueprint — PDF](blueprint/blueprint.pdf)
 - [Original paper — PDF](home_page/arxiv-2602.03500v1.pdf)
 - [Lean proofs in paper order](NthTropicalNevanlinna/Paper.lean)
-
-The Blueprint website has not been deployed. HTML files opened in GitHub's
-file viewer display source code, not the rendered website.
-A [downloadable website preview](https://github.com/czdg7tg2jk-crypto/nth-tropical-nevanlinna-formalization/releases/tag/private-review-20260928-r3)
-is available; extract it and run `python3 preview.py` to open it locally.
-This preview uses the website configuration at `8294d8b` and the Lean source
-at `9edb823`, including the updated Propositions 5.2–5.3 and Section 6 results.
-The PDFs and Lean files above track the current version.
 
 <details>
 <summary>Build instructions and repository structure</summary>
@@ -82,6 +77,9 @@ plan. A manual run with `deploy` unchecked only builds a downloadable
 `reading-website` artifact; it does not deploy. Private pushes skip cloud builds.
 Generated websites include dependency license notices and check their local
 links before upload.
+The optional `reviewed_snapshot` input publishes the checksum-verified r3
+archive only while the publication sources match that snapshot. Leave it
+unchecked to rebuild after source changes.
 
 The four tools in `scripts/` have distinct roles:
 
