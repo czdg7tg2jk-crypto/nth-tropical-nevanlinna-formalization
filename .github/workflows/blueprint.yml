@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main # Trigger on pushes to the default branch
+    paths-ignore:
+      - README.md
   pull_request:
   workflow_dispatch:
     inputs:
@@ -62,6 +64,9 @@ jobs:
           docker_image: ghcr.io/xu-cheng/texlive-full:20250401
           run: |
             apk add --update make py3-pip git pkgconfig graphviz graphviz-dev gcc musl-dev
+            # Alpine keeps Graphviz plugins outside the default linker search path.
+            export LIBRARY_PATH="/usr/lib/graphviz${LIBRARY_PATH:+:$LIBRARY_PATH}"
+            export LD_LIBRARY_PATH="/usr/lib/graphviz${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
             python3 -m venv /tmp/blueprint-env
             . /tmp/blueprint-env/bin/activate
             pip install -r blueprint/requirements.txt
