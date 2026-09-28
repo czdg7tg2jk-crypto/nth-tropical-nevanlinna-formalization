@@ -990,7 +990,7 @@ $j$-th root.  With $F(x)=\max_i f_i(x)$, define
 
 \begin{proposition}[5.2 --- Representation invariance]
 \paperlabel{prop:5.2}
-\lean{NthTropicalNevanlinna.cartanCharacteristic_eq_of_reducedCurveRepresentations}
+\lean{NthTropicalNevanlinna.cartanCharacteristic_eq_of_reduced_projectiveValue_eq_arbitraryOrders}
 \leanok
 \uses{prop:2.2,def:curve-objects}
 The Cartan characteristic is independent of the reduced representation.
@@ -1008,10 +1008,12 @@ change cancels from the defining expression for $T_f$.
 
 \begin{proposition}[5.3 --- Projective-pair characteristic]
 \paperlabel{prop:5.3}
-\lean{NthTropicalNevanlinna.cartanCharacteristic_projectivePair_eq_characteristic_sub}
+\lean{NthTropicalNevanlinna.cartanCharacteristic_projectivePair_eq_characteristic_sub_arbitraryOrders}
 \leanok
-\uses{thm:3.5,def:curve-objects}
-If $g=g_1-g_0$ and $[g_0:g_1]$ is reduced, then
+\uses{prop:2.3,prop:5.2,thm:3.5,def:curve-objects}
+Let $g$ have order $n\geq1$, with $g=g_1-g_0$, where $g_0,g_1$ are entire
+and have no common roots of any order.  Their maximum order need not equal
+$n$.  For $r>0$,
 \[
  T_{[g_0:g_1]}(r)=T(r,g)-g^+(0).
 \]
@@ -1019,11 +1021,22 @@ If $g=g_1-g_0$ and $[g_0:g_1]$ is reduced, then
 
 \begin{proof}
 \leanok
-Since $\max(g_0,g_1)=g_0+(g_1-g_0)^+$, substitute this identity into the
-Cartan characteristic.  Jensen applied to $g_0$ replaces its endpoint mean
-minus $g_0(0)$ by the difference of its root and pole counts.  Reducedness
-identifies those counts with the corresponding pole counts of $g_1-g_0$;
-the remaining endpoint term is $m(r,g)$, yielding the formula.
+Proposition 2.3 gives another reduced decomposition $g=h_1-h_0$ with
+$\max(\deg h_0,\deg h_1)=n$.  The two coordinate pairs differ by the common
+function $g_0-h_0$, so $[g_0:g_1]=[h_0:h_1]$.  Proposition 5.2 gives equal
+Cartan characteristics, even if the two representations have different
+maximum orders: its multiplicity argument applies through the larger order,
+and all higher multiplicities vanish.
+
+For the chosen pair, $\max(h_0,h_1)=h_0+g^+$.  Jensen and the absence of
+common roots identify the root counts of $h_0$ with the pole counts of $g$,
+giving
+\[
+ T_{[h_0:h_1]}(r)
+ =m(r,g)+\sum_{j=1}^{n}N^{(j)}(r,g)-g^+(0)
+ =T(r,g)-g^+(0).
+\]
+Transporting this equality back to the original pair proves the claim.
 \end{proof}
 
 \begin{proposition}[5.4 --- Coordinate quotient bound]
@@ -1053,8 +1066,8 @@ a constant.  The right side is therefore at most $T_f(r)+O(1)$.
 \end{proof}
 
 \begin{leanproof}
-\leanfile{cartanCharacteristic_eq_of_reducedCurveRepresentations},
-\leanfile{cartanCharacteristic_projectivePair_eq_characteristic_sub}, and
+\leanfile{cartanCharacteristic_eq_of_reduced_projectiveValue_eq_arbitraryOrders},
+\leanfile{cartanCharacteristic_projectivePair_eq_characteristic_sub_arbitraryOrders}, and
 \leanfile{characteristic_coordinateQuotient_le_upToConstant} in
 \leanfile{Curves/Characteristic.lean}.
 \end{leanproof}

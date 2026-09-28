@@ -1,5 +1,6 @@
 import NthTropicalNevanlinna.Curves.Basic
 import NthTropicalNevanlinna.Function.EntireMean
+import NthTropicalNevanlinna.Function.Decomposition
 import NthTropicalNevanlinna.Nevanlinna.Jensen
 
 /-!
@@ -789,8 +790,8 @@ theorem characteristic_coordinateQuotient_le_upToConstant
   exact characteristic_coordinateQuotient_le_cartan_add_constant
     F i l q hnq hquotient hr
 
-/-- Proposition 5.3 with the paper's heterogeneous coordinate orders:
-`max n₀ n₁ = n`, rather than the fixed-degree specialization. -/
+/-- Compatibility form of Proposition 5.3 when the maximum coordinate order
+equals the quotient order. The arbitrary-order paper statement is below. -/
 theorem cartanCharacteristic_projectivePair_eq_characteristic_sub
     {n n₀ n₁ : ℕ}
     (g : NthTropicalMeromorphicFunction n)
@@ -838,15 +839,28 @@ theorem cartanCharacteristic_projectivePair_eq_characteristic_sub
     characteristic, proximity]
   linarith
 
-/-- Proposition 5.2 in the paper's original quantifier form: two reduced
-representations of the same projective-valued map have the same Cartan
-characteristic.  No separately bundled rescaling function is assumed. -/
-theorem cartanCharacteristic_eq_of_reduced_projectiveValue_eq {n m : ℕ}
-    {F G : TropicalHolomorphicCurveRepresentation n m}
+/-- Proposition 5.2 across arbitrary representation orders. Two reduced
+representations of the same projective map have the same characteristic,
+even if their maximum coordinate orders differ. -/
+theorem cartanCharacteristic_eq_of_reduced_projectiveValue_eq_arbitraryOrders
+    {n₁ n₂ m : ℕ}
+    {F : TropicalHolomorphicCurveRepresentation n₁ m}
+    {G : TropicalHolomorphicCurveRepresentation n₂ m}
     (hF : F.IsReduced) (hG : G.IsReduced)
     (hprojective : ∀ x, F.projectiveValue x = G.projectiveValue x)
     {r : ℝ} (hr : 0 < r) :
     cartanCharacteristic F r = cartanCharacteristic G r := by
+  let N := max n₁ n₂
+  have hReduced {k : ℕ} (H : TropicalHolomorphicCurveRepresentation k m)
+      (hH : H.IsReduced) (x : ℝ) (j : ℕ) (hj : 1 ≤ j) :
+      ¬ ∀ i, IsJthRoot (H.coordinate i) j x := by
+    by_cases hjk : j ≤ k
+    · exact hH x j hj hjk
+    · intro hroots
+      have hz := multiplicity_eq_zero_of_order_lt (H.coordinate 0)
+        ((H.order_le 0).trans_lt (lt_of_not_ge hjk)) x
+      have hp : 0 < multiplicity (H.coordinate 0) j x := hroots 0
+      linarith
   let ref : Fin (m + 1) := 0
   have hcoordinateDifference (i : Fin (m + 1)) (x : ℝ) :
       F.eval i x + G.eval ref x = G.eval i x + F.eval ref x := by
@@ -860,27 +874,31 @@ theorem cartanCharacteristic_eq_of_reduced_projectiveValue_eq {n m : ℕ}
       (F.coordinate i) (G.coordinate ref) (G.coordinate i) (F.coordinate ref)
       (hcoordinateDifference i) j x
     linarith
-  have hrefMultiplicity (x : ℝ) (j : ℕ) (hj : 1 ≤ j) (hjn : j ≤ n) :
+  have hrefMultiplicity (x : ℝ) (j : ℕ) (hj : 1 ≤ j) (hjn : j ≤ N) :
       multiplicity (F.coordinate ref) j x =
         multiplicity (G.coordinate ref) j x := by
     by_contra hne
     rcases lt_or_gt_of_ne hne with hlt | hgt
-    · apply hG x j hj hjn
+    · apply hReduced G hG x j hj
       intro i
-      have hFi := F.coordinate_multiplicity_nonneg i x j hj hjn
+      have hFi := entire_multiplicity_nonneg_upTo
+        (F.coordinate i) (F.coordinate_isTropicalEntire i)
+        ((F.order_le i).trans (le_max_left n₁ n₂)) x j hj hjn
       have hdiff := hmultiplicityDifference i x j
       simp only [IsJthRoot]
       linarith
-    · apply hF x j hj hjn
+    · apply hReduced F hF x j hj
       intro i
-      have hGi := G.coordinate_multiplicity_nonneg i x j hj hjn
+      have hGi := entire_multiplicity_nonneg_upTo
+        (G.coordinate i) (G.coordinate_isTropicalEntire i)
+        ((G.order_le i).trans (le_max_right n₁ n₂)) x j hj hjn
       have hdiff := hmultiplicityDifference i x j
       simp only [IsJthRoot]
       linarith
   have hrootCounts :
-      (∑ j ∈ Finset.Icc 1 n,
+      (∑ j ∈ Finset.Icc 1 N,
           integratedRootCounting j r (F.coordinate ref)) =
-        ∑ j ∈ Finset.Icc 1 n,
+        ∑ j ∈ Finset.Icc 1 N,
           integratedRootCounting j r (G.coordinate ref) := by
     apply Finset.sum_congr rfl
     intro j hj
@@ -893,9 +911,9 @@ theorem cartanCharacteristic_eq_of_reduced_projectiveValue_eq {n m : ℕ}
   have hmeanG := sum_integratedRootCounting_eq_endpointMean_sub
     (G.coordinate ref) (G.coordinate_isTropicalEntire ref) hr
   have hextF := sum_integratedRootCounting_eq_of_order_le
-    (F.coordinate ref) (F.order_le ref) r
+    (F.coordinate ref) ((F.order_le ref).trans (le_max_left n₁ n₂)) r
   have hextG := sum_integratedRootCounting_eq_of_order_le
-    (G.coordinate ref) (G.order_le ref) r
+    (G.coordinate ref) ((G.order_le ref).trans (le_max_right n₁ n₂)) r
   change (∑ j ∈ Finset.Icc 1 (F.order ref),
       integratedRootCounting j r (F.coordinate ref)) =
     (F.eval ref r + F.eval ref (-r)) / 2 - F.eval ref 0 at hmeanF
@@ -925,6 +943,62 @@ theorem cartanCharacteristic_eq_of_reduced_projectiveValue_eq {n m : ℕ}
   rw [cartanCharacteristic, cartanCharacteristic,
     hmaximum r, hmaximum (-r), hmaximum 0]
   linarith
+
+/-- Same-order compatibility interface for Proposition 5.2. -/
+theorem cartanCharacteristic_eq_of_reduced_projectiveValue_eq {n m : ℕ}
+    {F G : TropicalHolomorphicCurveRepresentation n m}
+    (hF : F.IsReduced) (hG : G.IsReduced)
+    (hprojective : ∀ x, F.projectiveValue x = G.projectiveValue x)
+    {r : ℝ} (hr : 0 < r) :
+    cartanCharacteristic F r = cartanCharacteristic G r :=
+  cartanCharacteristic_eq_of_reduced_projectiveValue_eq_arbitraryOrders
+    hF hG hprojective hr
+
+/-- Proposition 5.3 without equating the quotient order with the maximum
+coordinate order. Proposition 2.3 supplies a reduced representation of order
+`n`; Proposition 5.2 transports its characteristic back to the given pair.
+The assumption `0 < n` is the paper's positive-integer convention. -/
+theorem cartanCharacteristic_projectivePair_eq_characteristic_sub_arbitraryOrders
+    {n n₀ n₁ : ℕ} (hn : 0 < n)
+    (g : NthTropicalMeromorphicFunction n)
+    (g₀ : NthTropicalMeromorphicFunction n₀)
+    (g₁ : NthTropicalMeromorphicFunction n₁)
+    (hg₀ : IsTropicalEntire g₀) (hg₁ : IsTropicalEntire g₁)
+    (hcommon : NoCommonRoots g₁ g₀ (max n₀ n₁))
+    (hquotient : ∀ x, g x = g₁ x - g₀ x)
+    {r : ℝ} (hr : 0 < r) :
+    cartanCharacteristic
+        (projectivePairRepresentationOfOrders g₀ g₁ hg₀ hg₁ rfl) r =
+      characteristic r g - maxPlusPositivePart (g 0) := by
+  obtain ⟨h₀, h₁, hh₀, hh₁, hquot, hcommonHP⟩ :=
+    exists_entire_quotient_decomposition_fixedDegree hn g
+  have hcommonH : NoCommonRoots h₁ h₀ n :=
+    fun x j hj hjn ↦ (hcommonHP x j hj hjn).1
+  let F := projectivePairRepresentationOfOrders g₀ g₁ hg₀ hg₁ rfl
+  let H := projectivePairRepresentation h₀ h₁ hh₀ hh₁
+  have hF : F.IsReduced := by
+    intro x j hj hjN hroots
+    exact hcommon x j hj hjN ⟨hroots 1, hroots 0⟩
+  have hH : H.IsReduced := by
+    intro x j hj hjn hroots
+    exact hcommonH x j hj hjn ⟨hroots 1, hroots 0⟩
+  have hprojective : ∀ x, F.projectiveValue x = H.projectiveValue x := by
+    intro x
+    apply Quotient.sound
+    refine ⟨g₀ x - h₀ x, ?_⟩
+    intro i
+    fin_cases i
+    · change g₀ x = h₀ x + (g₀ x - h₀ x)
+      ring
+    · change g₁ x = h₁ x + (g₀ x - h₀ x)
+      linarith [hquotient x, hquot x]
+  calc
+    cartanCharacteristic F r = cartanCharacteristic H r :=
+      cartanCharacteristic_eq_of_reduced_projectiveValue_eq_arbitraryOrders
+        hF hH hprojective hr
+    _ = characteristic r g - maxPlusPositivePart (g 0) :=
+      cartanCharacteristic_projectivePair_eq_characteristic_sub_fixedDegree
+        g h₀ h₁ hh₀ hh₁ hcommonH hquot hr
 
 theorem cartanCharacteristic_eq_of_reducedCurveRepresentations {n m : ℕ}
     {f : NthTropicalHolomorphicCurve n m}

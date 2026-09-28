@@ -13,6 +13,8 @@ The Blueprint website has not been deployed. HTML files opened in GitHub's
 file viewer display source code, not the rendered website.
 A [downloadable website preview](https://github.com/czdg7tg2jk-crypto/nth-tropical-nevanlinna-formalization/releases/tag/private-review-20260928-r2)
 is available; extract it and run `python3 preview.py` to open it locally.
+This preview is a snapshot of commit `30da41f`; the PDFs and Lean files above
+track the current version.
 
 <details>
 <summary>Build instructions and repository structure</summary>

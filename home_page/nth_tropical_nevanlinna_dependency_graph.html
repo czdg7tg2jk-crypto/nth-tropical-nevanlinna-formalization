@@ -234,6 +234,7 @@
 <path class="dep-edge" data-source="mult" data-target="curve" d="M 730.0 308.0 C 730.0 344.0, 1360.0 344.0, 1360.0 380.0"></path>
 <path class="dep-edge" data-source="curve" data-target="p524" d="M 1360.0 488.0 C 1360.0 794.0, 625.0 794.0, 625.0 1100.0"></path>
 <path class="dep-edge" data-source="p22" data-target="p524" d="M 100.0 488.0 C 100.0 794.0, 625.0 794.0, 625.0 1100.0"></path>
+<path class="dep-edge" data-source="p23" data-target="p524" d="M 310.0 488.0 C 310.0 794.0, 625.0 794.0, 625.0 1100.0"></path>
 <path class="dep-edge" data-source="t35" data-target="p524" d="M 730.0 1028.0 C 730.0 1064.0, 625.0 1064.0, 625.0 1100.0"></path>
 <path class="dep-edge" data-source="curve" data-target="hompoly" d="M 1360.0 488.0 C 1360.0 524.0, 730.0 524.0, 730.0 560.0"></path>
 <path class="dep-edge" data-source="t35" data-target="t56" d="M 730.0 1028.0 C 730.0 1064.0, 835.0 1064.0, 835.0 1100.0"></path>
@@ -322,7 +323,7 @@
     { id:"c48", code:"C4.8", section:"4", title:"Logarithmic derivative lemma", description:"The pointwise estimate yields the proximity form.", path:"../NthTropicalNevanlinna/LogDerivative/Main.lean", kind:"result", deps:["t47"] },
 
     { id:"curve", code:"5.1", section:"5", title:"Tropical holomorphic curves", description:"Reduced representations and the Cartan characteristic T_f.", path:"../NthTropicalNevanlinna/Curves/Basic.lean", kind:"definition", deps:["mero","mult"] },
-    { id:"p524", code:"P5.2-5.4", section:"5", title:"Curve characteristic identities", description:"Representation invariance, the projective-pair identity, and coordinate quotient bounds.", path:"../NthTropicalNevanlinna/Curves/Characteristic.lean", kind:"result", deps:["curve","p22","t35"] },
+    { id:"p524", code:"P5.2-5.4", section:"5", title:"Curve characteristic identities", description:"Representation invariance, the projective-pair identity, and coordinate quotient bounds.", path:"../NthTropicalNevanlinna/Curves/Characteristic.lean", kind:"result", deps:["curve","p22","p23","t35"] },
     { id:"hompoly", code:"5.2", section:"5", title:"Homogeneous tropical polynomials", description:"Finite-support homogeneous polynomials, composition, and degree bounds.", path:"../NthTropicalNevanlinna/Curves/HomogeneousPolynomial.lean", kind:"definition", deps:["curve"] },
     { id:"t56", code:"T5.6", section:"5", title:"Tropical polynomial second main theorem", description:"Signed counting and polynomial degree bounds give the characteristic identity.", path:"../NthTropicalNevanlinna/Curves/SecondMain.lean", kind:"result", deps:["t35","curve","hompoly"] },
     { id:"c57", code:"C5.7", section:"5", title:"First-order Fermat case", description:"The second main theorem specializes to an entire tropical Fermat composition.", path:"../NthTropicalNevanlinna/Curves/SecondMain.lean", kind:"result", deps:["t56"] },

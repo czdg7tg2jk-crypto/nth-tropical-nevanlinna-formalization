@@ -15,9 +15,15 @@ import NthTropicalNevanlinna.Curves.FermatExamples
 ## Main results, in paper order
 
 * Proposition 5.2:
-  `cartanCharacteristic_eq_of_reducedCurveRepresentations`.
+  `cartanCharacteristic_eq_of_reduced_projectiveValue_eq_arbitraryOrders`
+  compares reduced representations even when their coordinate orders differ.
+  `cartanCharacteristic_eq_of_reducedCurveRepresentations` remains available
+  for representations of one fixed-order curve.
 * Proposition 5.3:
-  `cartanCharacteristic_projectivePair_eq_characteristic_sub`.
+  `cartanCharacteristic_projectivePair_eq_characteristic_sub_arbitraryOrders`
+  uses Proposition 2.3 and representation invariance, without equating the
+  quotient order with the maximum coordinate order. The same-order interfaces
+  remain available for compatibility.
 * Proposition 5.4:
   `characteristic_coordinateQuotient_le_upToConstant`.
 * Theorem 5.6: `secondMain_homogeneousTropicalPolynomial`.
