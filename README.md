@@ -11,10 +11,11 @@ and Chengliang Tan ([arXiv:2602.03500v1](https://arxiv.org/abs/2602.03500v1)).
 
 The Blueprint website has not been deployed. HTML files opened in GitHub's
 file viewer display source code, not the rendered website.
-A [downloadable website preview](https://github.com/czdg7tg2jk-crypto/nth-tropical-nevanlinna-formalization/releases/tag/private-review-20260928-r2)
+A [downloadable website preview](https://github.com/czdg7tg2jk-crypto/nth-tropical-nevanlinna-formalization/releases/tag/private-review-20260928-r3)
 is available; extract it and run `python3 preview.py` to open it locally.
-This preview is a snapshot of commit `30da41f`; the PDFs and Lean files above
-track the current version.
+This preview uses the website configuration at `8294d8b` and the Lean source
+at `9edb823`, including the updated Propositions 5.2–5.3 and Section 6 results.
+The PDFs and Lean files above track the current version.
 
 <details>
 <summary>Build instructions and repository structure</summary>
