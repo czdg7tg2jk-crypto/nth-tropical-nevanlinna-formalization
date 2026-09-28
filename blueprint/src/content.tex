@@ -1319,13 +1319,14 @@ For entire $g_0,\ldots,g_m$, define
 
 \begin{theorem}[Finite-root first-order identity]
 \paperlabel{thm:finite-root-identity}
-\lean{NthTropicalNevanlinna.FiniteFirstOrderRootData.integratedRootCounting_eq_affine,NthTropicalNevanlinna.FiniteRootCasoratianData.countingDifference_eventually_constant,NthTropicalNevanlinna.FiniteRootCasoratianData.casoratianCounting_isEquivalent_coordinateCountingSum}
+\lean{NthTropicalNevanlinna.FiniteFirstOrderRootData.integratedRootCounting_eq_affine,NthTropicalNevanlinna.FiniteRootCasoratianData.countingDifference_eventually_constant,NthTropicalNevanlinna.FiniteRootCasoratianData.casoratianCounting_isEquivalent_coordinateCountingSum,NthTropicalNevanlinna.finiteRootCasoratian_countingDifference_isBigO_one,NthTropicalNevanlinna.finiteRootCasoratian_firstOrder_identity,NthTropicalNevanlinna.finiteRootCasoratian_firstOrder_multiplicative}
 \leanok
 \uses{thm:3.5,def:casoratian-data}
-Let $f_0,\ldots,f_m$ and $C_0=C_0(f_0,\ldots,f_m)$ be first-order entire
-functions with finite root sets.  Write their eventual slopes as
-$k_i^\pm,k_C^\pm$, and assume
-$a=\frac12\sum_i(k_i^+-k_i^-)>0$.  Then
+Let $f=[f_0:\cdots:f_m]$ be a first-order tropical holomorphic curve whose
+coordinates have finite root sets, possibly empty.  Its Casoratian
+$C_0=C_0(f_0,\ldots,f_m)$ is entire of order at most one, has finitely many
+roots, and may be constant.  Write the eventual slopes as $k_i^\pm,k_C^\pm$
+and put $a=\frac12\sum_i(k_i^+-k_i^-)\geq0$.  Then
 \[
  k_C^+-k_C^-=\sum_i(k_i^+-k_i^-),
 \]
@@ -1336,35 +1337,50 @@ and there are constants $M_i,M_C$ such that, for all sufficiently large $r$,
 \]
 Consequently
 \[
- N\!\left(r,-C_0(f_0,\ldots,f_m)\right)
- \sim\sum_{i=0}^mN(r,-f_i).
+ N(r,-C_0)-\sum_{i=0}^mN(r,-f_i)=O(1),
 \]
+and there is a function $\varepsilon(r)\to0$ such that, eventually,
+\[
+ N(r,-C_0)=\left(\sum_{i=0}^mN(r,-f_i)\right)(1+\varepsilon(r)).
+\]
+Here the minus signs indicate root counts, using the paper's pole-counting
+convention for $N(r,h)$.
 \end{theorem}
 
 \begin{proof}
 \leanok
-Choose $R$ beyond all roots and all affine-tail thresholds.  Jensen applied
-at two radii above $R$ shows that the total root multiplicity of an entire
-first-order function is its right tail slope minus its left tail slope.  If
-$X_i,X_C$ are the fixed finite root sets, put
+Choose a positive bound beyond all coordinate roots; this also makes sense
+when some or all root sets are empty.  On either tail, the first-order
+multiplicity, hence every change of slope, vanishes.  Continuity gives affine
+tails for each coordinate.  Every permutation summand defining $C_0$ has
+right slope $\sum_i k_i^+$ and left slope $\sum_i k_i^-$; their finite maximum
+has the same tail slopes.  Thus all Casoratian roots lie in a bounded
+interval, and local finiteness makes their set finite.
+
+Jensen applied at two radii beyond all roots identifies total root
+multiplicity with the difference of the tail slopes.  Put
 \[
  M_i=\frac12\sum_{x\in X_i}\omega_{f_i}(x)|x|,\qquad
- M_C=\frac12\sum_{x\in X_C}\omega_{C_0}(x)|x|.
+ M_C=\frac12\sum_{x\in X_C}\omega_{C_0}(x)|x|,
 \]
-Expanding the integrated counts now gives the two affine formulas.  Every
-permutation summand defining $C_0$ has right slope $\sum_i k_i^+$ and left
-slope $\sum_i k_i^-$; their finite maximum has the same slopes.  Subtracting
-the affine formulas leaves the constant $\sum_iM_i-M_C$.  Since their common
-leading coefficient $a$ is positive, this constant is little-$o$ of either
-side and the asymptotic equivalence follows.
+where $X_i,X_C$ are the finite root sets.  Expanding the integrated counts
+gives the exact affine formulas.  Their difference is the constant
+$\sum_iM_i-M_C$, proving the $O(1)$ estimate.
+
+If $a>0$, the sum of coordinate root counts grows linearly, so the constant
+difference divided by that sum tends to zero.  If $a=0$, nonnegativity of all
+root multiplicities forces every coordinate and Casoratian root count to
+vanish; take $\varepsilon=0$.  No division by a zero count is needed.
 \end{proof}
 
 \begin{leanproof}
-The stronger eventual affine identities are
-\leanfile{FiniteFirstOrderRootData.integratedRootCounting_eq_affine},
-\leanfile{FiniteRootCasoratianData.countingDifference_eventually_constant}, and
-\leanfile{FiniteRootCasoratianData.casoratianCounting_isEquivalent_coordinateCountingSum} in
-\leanfile{Truncated/FiniteRoots.lean}.
+\leanfile{FiniteFirstOrderRootData.ofFiniteRoots} constructs affine tails from
+finite root sets in \leanfile{Truncated/FiniteRoots.lean}.
+The curve-facing statements
+\leanfile{finiteRootCasoratian_countingDifference_isBigO_one},
+\leanfile{finiteRootCasoratian_firstOrder_identity}, and
+\leanfile{finiteRootCasoratian_firstOrder_multiplicative} in
+\leanfile{Truncated/ShiftCounting.lean} construct the Casoratian data internally.
 \end{leanproof}
 
 \begin{lemma}[6.1 --- Casoratian common factor]

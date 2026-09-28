@@ -1,15 +1,18 @@
 import NthTropicalNevanlinna.Truncated.Casoratian
-import NthTropicalNevanlinna.Nevanlinna.Jensen
+import NthTropicalNevanlinna.Curves.SecondMain
+import NthTropicalNevanlinna.PoissonJensen.IntrinsicTelescoping
 import Mathlib.Analysis.Asymptotics.AsymptoticEquivalent
 
 /-!
 # The finite-root first-order Casoratian identity
 
-The beginning of Section 6 assumes that every coordinate has finitely many
-first-order roots.  We package exactly that finite data and prove an eventual
-affine formula for its integrated root count.  Applied to the coordinates and
-their Casoratian, this yields an eventually constant counting difference and
-therefore the paper's multiplicative `1 + o(1)` conclusion.
+The beginning of Section 6 assumes finitely many first-order roots. We
+construct affine tails from that hypothesis, allowing empty root sets and
+functions of exact order zero. The exact affine counting formulas imply the
+paper's additive `O(1)` estimate. Splitting into positive and zero total root
+mass gives the multiplicative `1 + o(1)` conclusion without division by zero.
+All counts here are root counts, namely `N(r,-f)` in the paper's notation.
+The curve-facing automatic construction is in `Truncated/ShiftCounting.lean`.
 -/
 
 namespace NthTropicalNevanlinna
@@ -20,13 +23,167 @@ open Filter Function Set
 open scoped BigOperators Topology
 open Asymptotics
 
+/-- Finite roots of an entire function of order at most one give affine
+tails. The root set may be empty. -/
+theorem exists_affine_tails_of_finite_firstOrder_roots
+    {n : ℕ} (f : NthTropicalMeromorphicFunction n) (hn : n ≤ 1)
+    (hf : IsTropicalEntire f) (hfinite : {x : ℝ | IsJthRoot f 1 x}.Finite) :
+    ∃ R : ℝ, 0 < R ∧ ∃ a b u v : ℝ,
+      (∀ x, IsJthRoot f 1 x → |x| < R) ∧
+      (∀ x, x < -R → f x = a * x + u) ∧
+      (∀ x, R < x → f x = b * x + v) := by
+  classical
+  obtain ⟨B, hB⟩ := (hfinite.image (fun x : ℝ ↦ |x|)).bddAbove
+  let R : ℝ := max B 0 + 1
+  have hR : 0 < R := by dsimp [R]; linarith [le_max_right B 0]
+  have hbound (x : ℝ) (hx : IsJthRoot f 1 x) : |x| < R := by
+    have hxB := hB (mem_image_of_mem (fun x : ℝ ↦ |x|) hx)
+    dsimp [R]
+    linarith [le_max_left B 0]
+  have hzero (x : ℝ) (hx : R ≤ |x|) : multiplicity f 1 x = 0 := by
+    have hnonneg := entire_multiplicity_nonneg_upTo f hf hn x 1 (by omega) (by omega)
+    apply le_antisymm _ hnonneg
+    apply le_of_not_gt
+    intro hpos
+    exact (not_lt_of_ge hx) (hbound x hpos)
+  let a := ∑ j ∈ Finset.Icc 1 n, normalizedLeftJet f j (-R)
+  let b := ∑ j ∈ Finset.Icc 1 n, normalizedRightJet f j R
+  refine ⟨R, hR, a, b, f (-R) + a * R, f R - b * R, hbound, ?_, ?_⟩
+  · intro x hx
+    have hempty : jthSingularPointsIn f 1 x (-R) = ∅ := by
+      apply Finset.eq_empty_iff_forall_notMem.mpr
+      intro y hy
+      have h := mem_jthSingularPointsIn_iff.mp hy
+      exact h.2 (hzero y (by linarith [neg_le_abs y, h.1.2]))
+    have ht := sub_leftEndpoint_eq_intrinsic_singularity_sum_of_neg f hx (by linarith : -R < 0)
+    have heq : f (-R) - f x = a * (-R - x) := by
+      rw [ht]
+      dsimp [a]
+      rw [Finset.sum_mul]
+      apply Finset.sum_congr rfl
+      intro j hj
+      have hj1 : j = 1 := by have h := Finset.mem_Icc.mp hj; omega
+      subst j
+      simp [hempty]
+    linarith
+  · intro x hx
+    have hempty : jthSingularPointsIn f 1 R x = ∅ := by
+      apply Finset.eq_empty_iff_forall_notMem.mpr
+      intro y hy
+      have h := mem_jthSingularPointsIn_iff.mp hy
+      exact h.2 (hzero y (by linarith [le_abs_self y, h.1.1]))
+    have ht := endpoint_sub_eq_intrinsic_singularity_sum_of_pos f hR hx
+    have heq : f x - f R = b * (x - R) := by
+      rw [ht]
+      dsimp [b]
+      rw [Finset.sum_mul]
+      apply Finset.sum_congr rfl
+      intro j hj
+      have hj1 : j = 1 := by have h := Finset.mem_Icc.mp hj; omega
+      subst j
+      simp [hempty]
+    linarith
+
+private theorem firstMultiplicity_eq_zero_of_polynomial_on_Ioo
+    {n : ℕ} (f : NthTropicalMeromorphicFunction n) (p : Polynomial ℝ)
+    {a b x : ℝ} (hx : x ∈ Ioo a b)
+    (heq : ∀ y ∈ Ioo a b, f y = p.eval y) : multiplicity f 1 x = 0 := by
+  obtain ⟨l, hl, hleft⟩ := f.presentation.exists_left_germ_interval x
+  obtain ⟨u, hu, hright⟩ := f.presentation.exists_right_germ_interval x
+  have hpLeft : f.presentation.leftPieceAt x = p := by
+    apply Polynomial.eq_of_infinite_eval_eq
+    apply (Ioo_infinite (max_lt hl hx.1)).mono
+    intro y hy
+    exact (hleft y ⟨(le_max_left _ _).trans_lt hy.1, hy.2⟩).symm.trans
+      (heq y ⟨(le_max_right _ _).trans_lt hy.1, hy.2.trans hx.2⟩)
+  have hpRight : f.presentation.rightPieceAt x = p := by
+    apply Polynomial.eq_of_infinite_eval_eq
+    apply (Ioo_infinite (lt_min hu hx.2)).mono
+    intro y hy
+    exact (hright y ⟨hy.1, hy.2.trans_le (min_le_left _ _)⟩).symm.trans
+      (heq y ⟨hx.1.trans hy.1, hy.2.trans_le (min_le_right _ _)⟩)
+  simp only [multiplicity, multiplicityUsingPresentation, hpLeft, hpRight]
+  unfold rightSign leftSign
+  split_ifs <;> ring
+
+/-- Affine tails imply that every first-order root lies in a bounded
+interval, so local finiteness gives a finite global root set. -/
+theorem finite_firstOrder_roots_of_affine_tails
+    {n : ℕ} (f : NthTropicalMeromorphicFunction n)
+    (R a b u v : ℝ)
+    (hleft : ∀ x, x < -R → f x = a * x + u)
+    (hright : ∀ x, R < x → f x = b * x + v) :
+    {x : ℝ | IsJthRoot f 1 x}.Finite := by
+  classical
+  apply (jthRootPoints f 1 (R + 1)).finite_toSet.subset
+  intro x hx
+  have hxroot : 0 < multiplicity f 1 x := hx
+  have hlow : -R ≤ x := by
+    by_contra h
+    have hxR := lt_of_not_ge h
+    have hz := firstMultiplicity_eq_zero_of_polynomial_on_Ioo f
+      (Polynomial.C a * Polynomial.X + Polynomial.C u)
+      (show x ∈ Ioo (x - 1) (-R) by constructor <;> linarith)
+      (fun y hy ↦ by simpa using hleft y hy.2)
+    linarith
+  have hupp : x ≤ R := by
+    by_contra h
+    have hxR := lt_of_not_ge h
+    have hz := firstMultiplicity_eq_zero_of_polynomial_on_Ioo f
+      (Polynomial.C b * Polynomial.X + Polynomial.C v)
+      (show x ∈ Ioo R (x + 1) by constructor <;> linarith)
+      (fun y hy ↦ by simpa using hright y hy.1)
+    linarith
+  exact mem_jthRootPoints_iff.mpr ⟨⟨by linarith, by linarith⟩, hx⟩
+
+
+/-- Every permutation has the same slope on each tail. A zero slope is
+allowed, so the Casoratian may be constant. -/
+theorem tropicalCasoratian_affine_tails {m : ℕ}
+    (f : Fin (m + 1) → ℝ → ℝ) (R : ℝ) (hR : 0 < R)
+    (a b u v : Fin (m + 1) → ℝ)
+    (hleft : ∀ i x, x < -R → f i x = a i * x + u i)
+    (hright : ∀ i x, R < x → f i x = b i * x + v i) :
+    ∃ S : ℝ, 0 < S ∧ ∃ U V : ℝ,
+      (∀ x, x < -S → tropicalCasoratian f x = (∑ i, a i) * x + U) ∧
+      (∀ x, S < x → tropicalCasoratian f x = (∑ i, b i) * x + V) := by
+  let S : ℝ := R + m + 1
+  have hS : 0 < S := by dsimp [S]; positivity
+  refine ⟨S, hS, tropicalCasoratian f (-S) + (∑ i, a i) * S,
+    tropicalCasoratian f S - (∑ i, b i) * S, ?_, ?_⟩
+  · intro x hx
+    have h := tropicalCasoratian_eq_add_of_coordinateShift f
+      (fun i ↦ a i * (x + S)) (-S) x (by
+        intro i k
+        have hk : ((k : ℕ) : ℝ) ≤ m := by exact_mod_cast (Nat.le_of_lt_succ k.isLt)
+        have hbase : -S + (k : ℕ) < -R := by dsimp [S]; linarith
+        have hnext : x + (k : ℕ) < -R := by linarith
+        rw [hleft i _ hbase, hleft i _ hnext]
+        ring)
+    rw [h, ← Finset.sum_mul]
+    ring
+  · intro x hx
+    have h := tropicalCasoratian_eq_add_of_coordinateShift f
+      (fun i ↦ b i * (x - S)) S x (by
+        intro i k
+        have hk : (0 : ℝ) ≤ ((k : ℕ) : ℝ) := by positivity
+        have hm : (0 : ℝ) ≤ m := by positivity
+        have hbase : R < S + (k : ℕ) := by dsimp [S]; linarith
+        have hnext : R < x + (k : ℕ) := by linarith
+        rw [hright i _ hbase, hright i _ hnext]
+        ring)
+    rw [h, ← Finset.sum_mul]
+    ring
+
+
 /-- Finite first-order root data for one tropical meromorphic function.
 
 `leftSlope` and `rightSlope` are the two eventual affine slopes in Section 6.
 The slope-jump identity is *not* a field: it is proved below from Jensen's
 formula, entirety, and the two affine tails. -/
-structure FiniteFirstOrderRootData
-    (f : NthTropicalMeromorphicFunction 1) where
+structure FiniteFirstOrderRootData {n : ℕ}
+    (f : NthTropicalMeromorphicFunction n) where
+  order_le_one : n ≤ 1
   entire : IsTropicalEntire f
   roots : Finset ℝ
   roots_exact : ∀ x, x ∈ roots ↔ IsJthRoot f 1 x
@@ -42,17 +199,41 @@ structure FiniteFirstOrderRootData
 
 namespace FiniteFirstOrderRootData
 
+/-- Construct the finite-root data directly from the paper's assumptions,
+without requiring affine tails or nonempty roots as extra hypotheses. -/
+def ofFiniteRoots {n : ℕ} (f : NthTropicalMeromorphicFunction n)
+    (hn : n ≤ 1) (hf : IsTropicalEntire f)
+    (hfinite : {x : ℝ | IsJthRoot f 1 x}.Finite) : FiniteFirstOrderRootData f := by
+  classical
+  apply Classical.choice
+  obtain ⟨R, hR, a, b, u, v, hbound, hleft, hright⟩ :=
+    exists_affine_tails_of_finite_firstOrder_roots f hn hf hfinite
+  exact ⟨{
+    order_le_one := hn
+    entire := hf
+    roots := hfinite.toFinset
+    roots_exact := fun x ↦ hfinite.mem_toFinset
+    cutoff := R
+    cutoff_pos := hR
+    root_abs_lt_cutoff := fun x hx ↦ hbound x (hfinite.mem_toFinset.mp hx)
+    leftSlope := a
+    rightSlope := b
+    leftIntercept := u
+    rightIntercept := v
+    left_affine := hleft
+    right_affine := hright }⟩
+
 /-- Half the total first-order multiplicity, the coefficient of `r`. -/
-def linearCoefficient {f : NthTropicalMeromorphicFunction 1}
+def linearCoefficient {n : ℕ} {f : NthTropicalMeromorphicFunction n}
     (D : FiniteFirstOrderRootData f) : ℝ :=
   (D.rightSlope - D.leftSlope) / 2
 
 /-- The constant weighted absolute first moment of the finite roots. -/
-def rootMoment {f : NthTropicalMeromorphicFunction 1}
+def rootMoment {n : ℕ} {f : NthTropicalMeromorphicFunction n}
     (D : FiniteFirstOrderRootData f) : ℝ :=
   (1 / 2) * ∑ x ∈ D.roots, rootOrPoleMultiplicity f 1 x * |x|
 
-theorem jthRootPoints_eq_roots {f : NthTropicalMeromorphicFunction 1}
+theorem jthRootPoints_eq_roots {n : ℕ} {f : NthTropicalMeromorphicFunction n}
     (D : FiniteFirstOrderRootData f) {r : ℝ} (hr : D.cutoff < r) :
     jthRootPoints f 1 r = D.roots := by
   classical
@@ -66,7 +247,7 @@ theorem jthRootPoints_eq_roots {f : NthTropicalMeromorphicFunction 1}
     exact ⟨(abs_lt.mp habs), (D.roots_exact x).1 hx⟩
 
 private theorem integratedRootCounting_eq_mass_affine
-    {f : NthTropicalMeromorphicFunction 1}
+    {n : ℕ} {f : NthTropicalMeromorphicFunction n}
     (D : FiniteFirstOrderRootData f) {r : ℝ} (hr : D.cutoff < r) :
     integratedRootCounting 1 r f =
       (1 / 2) * (∑ x ∈ D.roots, rootOrPoleMultiplicity f 1 x) * r -
@@ -78,39 +259,25 @@ private theorem integratedRootCounting_eq_mass_affine
   ring
 
 private theorem integratedCounting_eq_zero
-    {f : NthTropicalMeromorphicFunction 1}
+    {n : ℕ} {f : NthTropicalMeromorphicFunction n}
     (D : FiniteFirstOrderRootData f) (r : ℝ) :
     integratedCounting 1 r f = 0 := by
-  classical
-  have hpoles : jthPolePoints f 1 r = ∅ := by
-    ext x
-    simp only [mem_jthPolePoints_iff]
-    constructor
-    · rintro ⟨_, hxPole⟩
-      exfalso
-      have hxNonneg := (isTropicalEntire_iff_multiplicity_nonneg f).mp
-        D.entire x 1 (by simp) (by simp)
-      exact (not_lt_of_ge hxNonneg) hxPole
-    · intro hx
-      simp at hx
-  simp [integratedCounting, hpoles]
+  exact integratedCounting_eq_zero_of_entire_any_order f D.entire (by omega) r
 
 private theorem integratedRootCounting_eq_endpointMean_sub
-    {f : NthTropicalMeromorphicFunction 1}
+    {n : ℕ} {f : NthTropicalMeromorphicFunction n}
     (D : FiniteFirstOrderRootData f) {r : ℝ} (hr : 0 < r) :
     integratedRootCounting 1 r f = (f r + f (-r)) / 2 - f 0 := by
-  have hj := jensenFormula f hr
-  rw [jensenRootMultiplicitySum_eq f hr,
-    jensenPoleMultiplicitySum_eq f hr] at hj
-  have hpole := D.integratedCounting_eq_zero r
-  norm_num [hpole] at hj
-  linarith
+  have hmean := sum_integratedRootCounting_eq_endpointMean_sub f D.entire hr
+  have hext := sum_integratedRootCounting_eq_of_order_le f D.order_le_one r
+  norm_num at hext
+  exact hext.trans hmean
 
 /-- The finite jump identity used without proof in the source's calculation:
 the total first-order root multiplicity equals the difference of the two tail
 slopes. -/
 theorem totalMultiplicity_eq_slopeJump
-    {f : NthTropicalMeromorphicFunction 1}
+    {n : ℕ} {f : NthTropicalMeromorphicFunction n}
     (D : FiniteFirstOrderRootData f) :
     (∑ x ∈ D.roots, rootOrPoleMultiplicity f 1 x) =
       D.rightSlope - D.leftSlope := by
@@ -137,7 +304,7 @@ theorem totalMultiplicity_eq_slopeJump
 6: beyond the last root the integrated count is exactly affine, not merely
 affine up to `O(1)`. -/
 theorem integratedRootCounting_eq_affine
-    {f : NthTropicalMeromorphicFunction 1}
+    {n : ℕ} {f : NthTropicalMeromorphicFunction n}
     (D : FiniteFirstOrderRootData f) {r : ℝ} (hr : D.cutoff < r) :
     integratedRootCounting 1 r f = D.linearCoefficient * r - D.rootMoment := by
   classical
@@ -147,27 +314,65 @@ theorem integratedRootCounting_eq_affine
   ring
 
 theorem integratedRootCounting_eventually_eq_affine
-    {f : NthTropicalMeromorphicFunction 1}
+    {n : ℕ} {f : NthTropicalMeromorphicFunction n}
     (D : FiniteFirstOrderRootData f) :
     (fun r ↦ integratedRootCounting 1 r f) =ᶠ[atTop]
       fun r ↦ D.linearCoefficient * r - D.rootMoment := by
   filter_upwards [eventually_gt_atTop D.cutoff] with r hr
   exact D.integratedRootCounting_eq_affine hr
 
+theorem linearCoefficient_nonneg {n : ℕ} {f : NthTropicalMeromorphicFunction n}
+    (D : FiniteFirstOrderRootData f) : 0 ≤ D.linearCoefficient := by
+  have hsum : 0 ≤ ∑ x ∈ D.roots, rootOrPoleMultiplicity f 1 x :=
+    Finset.sum_nonneg (fun _ _ ↦ abs_nonneg _)
+  rw [D.totalMultiplicity_eq_slopeJump] at hsum
+  exact div_nonneg hsum (by norm_num)
+
+/-- Zero total root mass means that there are no roots, including when the
+function itself has exact order zero. -/
+theorem roots_eq_empty_of_linearCoefficient_eq_zero
+    {n : ℕ} {f : NthTropicalMeromorphicFunction n}
+    (D : FiniteFirstOrderRootData f) (hz : D.linearCoefficient = 0) : D.roots = ∅ := by
+  classical
+  have hsum : (∑ x ∈ D.roots, rootOrPoleMultiplicity f 1 x) = 0 := by
+    rw [D.totalMultiplicity_eq_slopeJump]
+    dsimp [linearCoefficient] at hz
+    linarith
+  apply Finset.eq_empty_iff_forall_notMem.mpr
+  intro x hx
+  have hzero := (Finset.sum_eq_zero_iff_of_nonneg
+    (fun y (_ : y ∈ D.roots) ↦ abs_nonneg (multiplicity f 1 y))).mp hsum x hx
+  have hroot : 0 < multiplicity f 1 x := (D.roots_exact x).mp hx
+  exact (ne_of_gt (abs_pos.mpr (ne_of_gt hroot))) hzero
+
+theorem integratedRootCounting_eq_zero_of_linearCoefficient_eq_zero
+    {n : ℕ} {f : NthTropicalMeromorphicFunction n}
+    (D : FiniteFirstOrderRootData f) (hz : D.linearCoefficient = 0) (r : ℝ) :
+    integratedRootCounting 1 r f = 0 := by
+  classical
+  have hempty := D.roots_eq_empty_of_linearCoefficient_eq_zero hz
+  have hpoints : jthRootPoints f 1 r = ∅ := by
+    apply Finset.eq_empty_iff_forall_notMem.mpr
+    intro x hx
+    have hroot := (mem_jthRootPoints_iff.mp hx).2
+    have hm := (D.roots_exact x).mpr hroot
+    simpa [hempty] using hm
+  simp [integratedRootCounting, hpoints]
+
 end FiniteFirstOrderRootData
 
 /-- The finite-root Section 6 data for all coordinates and their tropical
-Casoratian.  `casoratianSlopeJump` records the tail-slope computation made in
-the paper; the positivity hypothesis is the nonconstant-curve input. -/
+Casoratian.  Orders may be zero and root sets may be empty. The tail-slope identity is
+proved below; no positive total root multiplicity is assumed. -/
 structure FiniteRootCasoratianData (m : ℕ) where
-  coordinate : Fin (m + 1) → NthTropicalMeromorphicFunction 1
-  casoratian : NthTropicalMeromorphicFunction 1
+  coordinateOrder : Fin (m + 1) → ℕ
+  coordinate : ∀ i, NthTropicalMeromorphicFunction (coordinateOrder i)
+  casoratianOrder : ℕ
+  casoratian : NthTropicalMeromorphicFunction casoratianOrder
   coordinateRoots : ∀ i, FiniteFirstOrderRootData (coordinate i)
   casoratianRoots : FiniteFirstOrderRootData casoratian
   casoratian_eq : ∀ x,
     casoratian x = tropicalCasoratian (fun i y ↦ coordinate i y) x
-  totalSlopeJump_pos :
-    0 < ∑ i, ((coordinateRoots i).rightSlope - (coordinateRoots i).leftSlope)
 
 namespace FiniteRootCasoratianData
 
@@ -318,47 +523,62 @@ theorem countingDifference_eventually_constant
   rw [hC, hF]
   ring
 
+/-- The paper's additive `O(1)` estimate, valid also when there are no roots. -/
+theorem countingDifference_isBigO_one
+    {m : ℕ} (D : FiniteRootCasoratianData m) :
+    (fun r ↦ D.casoratianCounting r - D.coordinateCountingSum r) =O[atTop]
+      (fun _ : ℝ ↦ (1 : ℝ)) := by
+  apply IsBigO.of_bound |D.coordinateRootMomentSum - D.casoratianRoots.rootMoment|
+  filter_upwards [D.countingDifference_eventually_constant] with r hr
+  simp [hr, Real.norm_eq_abs]
+
 /-- The important equality extracted from the beginning of Section 6:
-`N(r,C₀) = (∑ᵢ N(r,fᵢ))(1+o(1))`, expressed by Mathlib's standard
+`N(r,-C₀) = (∑ᵢ N(r,-fᵢ))(1+o(1))`, expressed by Mathlib's standard
 asymptotic-equivalence relation. -/
 theorem casoratianCounting_isEquivalent_coordinateCountingSum
     {m : ℕ} (D : FiniteRootCasoratianData m) :
     D.casoratianCounting ~[atTop] D.coordinateCountingSum := by
-  have ha : 0 < D.totalLinearCoefficient := by
-    have hcoeff : D.totalLinearCoefficient =
-        (1 / 2) * ∑ i,
-          ((D.coordinateRoots i).rightSlope - (D.coordinateRoots i).leftSlope) := by
-      simp only [totalLinearCoefficient,
-        FiniteFirstOrderRootData.linearCoefficient, div_eq_mul_inv]
-      rw [Finset.mul_sum]
-      apply Finset.sum_congr rfl
-      intro i _
-      ring
-    rw [hcoeff]
-    nlinarith [D.totalSlopeJump_pos]
-  let L : ℝ → ℝ := fun r ↦ D.totalLinearCoefficient * r
-  have hLtop : Tendsto L atTop atTop := by
-    simpa [L, mul_comm] using tendsto_id.const_mul_atTop ha
-  have hLnorm : Tendsto (norm ∘ L) atTop atTop := by
-    simpa [Function.comp_def, Real.norm_eq_abs] using
-      tendsto_abs_atTop_atTop.comp hLtop
-  have hCasLinear :
-      (fun r ↦ L r - D.casoratianRoots.rootMoment) ~[atTop] L := by
-    simpa [sub_eq_add_neg] using
-      (IsEquivalent.refl.add_const_of_norm_tendsto_atTop hLnorm
-        (c := -D.casoratianRoots.rootMoment))
-  have hCoordLinear :
-      (fun r ↦ L r - D.coordinateRootMomentSum) ~[atTop] L := by
-    simpa [sub_eq_add_neg] using
-      (IsEquivalent.refl.add_const_of_norm_tendsto_atTop hLnorm
-        (c := -D.coordinateRootMomentSum))
-  have hCas : D.casoratianCounting ~[atTop] L :=
-    hCasLinear.congr_left (by
-      simpa [L] using D.casoratianCounting_eventually_eq_affine.symm)
-  have hCoord : D.coordinateCountingSum ~[atTop] L :=
-    hCoordLinear.congr_left (by
-      simpa [L] using D.coordinateCountingSum_eventually_eq_affine.symm)
-  exact hCas.trans hCoord.symm
+  have hnonneg : ∀ i, 0 ≤ (D.coordinateRoots i).linearCoefficient :=
+    fun i ↦ (D.coordinateRoots i).linearCoefficient_nonneg
+  have ha0 : 0 ≤ D.totalLinearCoefficient := Finset.sum_nonneg (fun i _ ↦ hnonneg i)
+  rcases eq_or_lt_of_le ha0 with hz | ha
+  · have hi : ∀ i, (D.coordinateRoots i).linearCoefficient = 0 := by
+      intro i
+      exact (Finset.sum_eq_zero_iff_of_nonneg (fun j _ ↦ hnonneg j)).mp
+        hz.symm i (Finset.mem_univ i)
+    have hC : D.casoratianRoots.linearCoefficient = 0 :=
+      D.casoratian_linearCoefficient_eq_total.trans hz.symm
+    have hcounts : D.casoratianCounting = D.coordinateCountingSum := by
+      funext r
+      dsimp [casoratianCounting, coordinateCountingSum]
+      rw [D.casoratianRoots.integratedRootCounting_eq_zero_of_linearCoefficient_eq_zero hC]
+      symm
+      exact Finset.sum_eq_zero (fun i _ ↦
+        (D.coordinateRoots i).integratedRootCounting_eq_zero_of_linearCoefficient_eq_zero (hi i) r)
+    rw [hcounts]
+  · let L : ℝ → ℝ := fun r ↦ D.totalLinearCoefficient * r
+    have hLtop : Tendsto L atTop atTop := by
+      simpa [L, mul_comm] using tendsto_id.const_mul_atTop ha
+    have hLnorm : Tendsto (norm ∘ L) atTop atTop := by
+      simpa [Function.comp_def, Real.norm_eq_abs] using
+        tendsto_abs_atTop_atTop.comp hLtop
+    have hCasLinear :
+        (fun r ↦ L r - D.casoratianRoots.rootMoment) ~[atTop] L := by
+      simpa [sub_eq_add_neg] using
+        (IsEquivalent.refl.add_const_of_norm_tendsto_atTop hLnorm
+          (c := -D.casoratianRoots.rootMoment))
+    have hCoordLinear :
+        (fun r ↦ L r - D.coordinateRootMomentSum) ~[atTop] L := by
+      simpa [sub_eq_add_neg] using
+        (IsEquivalent.refl.add_const_of_norm_tendsto_atTop hLnorm
+          (c := -D.coordinateRootMomentSum))
+    have hCas : D.casoratianCounting ~[atTop] L :=
+      hCasLinear.congr_left (by
+        simpa [L] using D.casoratianCounting_eventually_eq_affine.symm)
+    have hCoord : D.coordinateCountingSum ~[atTop] L :=
+      hCoordLinear.congr_left (by
+        simpa [L] using D.coordinateCountingSum_eventually_eq_affine.symm)
+    exact hCas.trans hCoord.symm
 
 end FiniteRootCasoratianData
 

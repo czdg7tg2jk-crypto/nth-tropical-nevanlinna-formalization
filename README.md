@@ -114,7 +114,7 @@ source paper labels the same chain as Lemma 4.3.0, Lemmas 4.3-4.5, Theorem
 - `lake build` succeeds with the pinned toolchain.  Remaining linter and
   deprecation messages are warnings, not compilation errors.
 - The source tree contains no `sorry`, `admit`, or project-defined `axiom`.
-- All 83 distinct Lean declarations referenced by the Blueprint pass
+- All 86 distinct Lean declarations referenced by the Blueprint pass
   `lake exe checkdecls blueprint/lean_decls`.
 - The paper convention `n in {1,2,...}` is represented explicitly by `1 <= n`.
 - Growth invariants use `EReal`; local polynomial germs and multiplicities are

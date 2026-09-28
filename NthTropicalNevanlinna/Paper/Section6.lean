@@ -12,10 +12,15 @@ import NthTropicalNevanlinna.Truncated.Main
 
 ## Main results, in paper order
 
-* Finite-root identity:
-  `FiniteFirstOrderRootData.integratedRootCounting_eq_affine`,
-  `FiniteRootCasoratianData.countingDifference_eventually_constant`, and
-  `FiniteRootCasoratianData.casoratianCounting_isEquivalent_coordinateCountingSum`.
+* Finite-root identity (empty root sets are allowed):
+  `finiteRootCasoratian_countingDifference_isBigO_one`,
+  `finiteRootCasoratian_firstOrder_identity`, and
+  `finiteRootCasoratian_firstOrder_multiplicative`.
+  `finiteRootCasoratianData` constructs the affine tails and Casoratian root
+  data from finite coordinate root sets, including a constant Casoratian.
+  The exact affine identities remain available through
+  `FiniteFirstOrderRootData.integratedRootCounting_eq_affine` and
+  `FiniteRootCasoratianData.countingDifference_eventually_constant`.
 * Lemma 6.1:
   `tropicalCasoratian_commonFactor` and
   `casoratian_commonFactor_of_entire`.

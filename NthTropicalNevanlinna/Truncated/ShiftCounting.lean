@@ -150,6 +150,88 @@ theorem canonicalCurveCasoratianRealization_isTropicalEntire {m : ℕ}
   intro pi
   exact curvePermutationSumRealization_isTropicalEntire F pi
 
+/-- Assemble the finite-root data from the coordinate root sets alone.
+Affine tails, finite Casoratian roots, and its possibly zero exact order
+are constructed internally. Empty coordinate root sets are allowed. -/
+def finiteRootCasoratianData {m : ℕ}
+    (F : TropicalHolomorphicCurveRepresentation 1 m)
+    (hfinite : ∀ i, {x : ℝ | IsJthRoot (F.coordinate i) 1 x}.Finite) :
+    FiniteRootCasoratianData m := by
+  classical
+  let D := fun i ↦ FiniteFirstOrderRootData.ofFiniteRoots
+    (F.coordinate i) (F.order_le i) (F.coordinate_isTropicalEntire i) (hfinite i)
+  let C := canonicalCurveCasoratianRealization F
+  have hCfinite : {x : ℝ | IsJthRoot C.function 1 x}.Finite := by
+    let R : ℝ := max 1 (Finset.univ.sup' Finset.univ_nonempty (fun i ↦ (D i).cutoff))
+    have hR : 0 < R := zero_lt_one.trans_le (le_max_left _ _)
+    have hcut (i : Fin (m + 1)) : (D i).cutoff ≤ R :=
+      (Finset.le_sup' (fun i ↦ (D i).cutoff) (Finset.mem_univ i)).trans
+        (le_max_right _ _)
+    obtain ⟨S, _hS, U, V, hleft, hright⟩ := tropicalCasoratian_affine_tails
+      (fun i y ↦ F.eval i y) R hR
+      (fun i ↦ (D i).leftSlope) (fun i ↦ (D i).rightSlope)
+      (fun i ↦ (D i).leftIntercept) (fun i ↦ (D i).rightIntercept)
+      (fun i x hx ↦ (D i).left_affine x (by linarith [hcut i]))
+      (fun i x hx ↦ (D i).right_affine x (by linarith [hcut i]))
+    apply finite_firstOrder_roots_of_affine_tails C.function S
+      (∑ i, (D i).leftSlope) (∑ i, (D i).rightSlope) U V
+    · intro x hx
+      rw [C.eq_casoratian]
+      exact hleft x hx
+    · intro x hx
+      rw [C.eq_casoratian]
+      exact hright x hx
+  exact {
+    coordinateOrder := F.order
+    coordinate := F.coordinate
+    casoratianOrder := C.order
+    casoratian := C.function
+    coordinateRoots := D
+    casoratianRoots := FiniteFirstOrderRootData.ofFiniteRoots C.function C.order_le
+      (canonicalCurveCasoratianRealization_isTropicalEntire F) hCfinite
+    casoratian_eq := C.eq_casoratian }
+
+/-- The Section 6 additive `O(1)` relation, using the paper's root-counting
+notation explicitly: `N(r,-C₀) - ∑ᵢ N(r,-fᵢ) = O(1)`. -/
+theorem finiteRootCasoratian_countingDifference_isBigO_one {m : ℕ}
+    (F : TropicalHolomorphicCurveRepresentation 1 m)
+    (hfinite : ∀ i, {x : ℝ | IsJthRoot (F.coordinate i) 1 x}.Finite) :
+    Asymptotics.IsBigO Filter.atTop
+      (fun r ↦ integratedCounting 1 r (-(canonicalCurveCasoratianRealization F).function) -
+        ∑ i, integratedCounting 1 r (-(F.coordinate i)))
+      (fun _ : ℝ ↦ (1 : ℝ)) := by
+  simp only [integratedCounting_neg]
+  exact (finiteRootCasoratianData F hfinite).countingDifference_isBigO_one
+
+/-- The finite-root first-order conclusion from the coordinate hypotheses,
+including the zero-root case. No positive total root mass is assumed. -/
+theorem finiteRootCasoratian_firstOrder_identity {m : ℕ}
+    (F : TropicalHolomorphicCurveRepresentation 1 m)
+    (hfinite : ∀ i, {x : ℝ | IsJthRoot (F.coordinate i) 1 x}.Finite) :
+    Asymptotics.IsEquivalent Filter.atTop
+      (fun r ↦ integratedCounting 1 r (-(canonicalCurveCasoratianRealization F).function))
+      (fun r ↦ ∑ i, integratedCounting 1 r (-(F.coordinate i))) := by
+  simp only [integratedCounting_neg]
+  exact (finiteRootCasoratianData F hfinite).casoratianCounting_isEquivalent_coordinateCountingSum
+
+/-- Literal multiplicative form with an error tending to zero. This form
+remains meaningful when both counts vanish, unlike their quotient. -/
+theorem finiteRootCasoratian_firstOrder_multiplicative {m : ℕ}
+    (F : TropicalHolomorphicCurveRepresentation 1 m)
+    (hfinite : ∀ i, {x : ℝ | IsJthRoot (F.coordinate i) 1 x}.Finite) :
+    ∃ ε : ℝ → ℝ, Filter.Tendsto ε Filter.atTop (nhds 0) ∧
+      ∀ᶠ r in Filter.atTop,
+        integratedCounting 1 r (-(canonicalCurveCasoratianRealization F).function) =
+          (∑ i, integratedCounting 1 r (-(F.coordinate i))) * (1 + ε r) := by
+  obtain ⟨φ, hφ, hEq⟩ := (finiteRootCasoratian_firstOrder_identity F hfinite).exists_eq_mul
+  refine ⟨fun r ↦ φ r - 1, ?_, ?_⟩
+  · simpa using hφ.sub (tendsto_const_nhds (x := (1 : ℝ)))
+  · filter_upwards [hEq] with r hr
+    change integratedCounting 1 r (-(canonicalCurveCasoratianRealization F).function) =
+      φ r * (∑ i, integratedCounting 1 r (-(F.coordinate i))) at hr
+    rw [hr]
+    ring
+
 /-- Every canonical coordinate shift of a first-order curve is entire. -/
 theorem canonicalCurveShiftRealizations_isTropicalEntire {m : ℕ}
     (F : TropicalHolomorphicCurveRepresentation 1 m)
