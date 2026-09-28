@@ -2,18 +2,20 @@
 
 Lean 4 formalization of *n-th Tropical Nevanlinna Theory* by Risto Korhonen
 and Chengliang Tan ([arXiv:2602.03500v1](https://arxiv.org/abs/2602.03500v1)).
-The target list covers 26 numbered or section-level results, seven explicit
-examples, and two unnumbered counterexamples. See [paper attribution](#original-paper-and-dependency-maps).
 
-## Start here
+## Read
 
-| Resource | Purpose |
-| --- | --- |
-| [Original paper PDF — arXiv:2602.03500v1](home_page/arxiv-2602.03500v1.pdf) | The paper by Risto Korhonen and Chengliang Tan. |
-| [Lean Blueprint PDF](blueprint/blueprint.pdf) | Mathematical exposition and the formalization map. |
-| [Blueprint LaTeX source](blueprint/src/content.tex) | Maintained source of the mathematical exposition. |
-| [Paper-order Lean entry](NthTropicalNevanlinna/Paper.lean) | Read the formalization in paper order. |
-| [Top-level Lean entry](NthTropicalNevanlinna.lean) | Import the entire library. |
+- [Blueprint — PDF](blueprint/blueprint.pdf)
+- [Original paper — PDF](home_page/arxiv-2602.03500v1.pdf)
+- [Lean proofs in paper order](NthTropicalNevanlinna/Paper.lean)
+
+The Blueprint website has not been deployed. HTML files opened in GitHub's
+file viewer display source code, not the rendered website.
+A [downloadable website preview](https://github.com/czdg7tg2jk-crypto/nth-tropical-nevanlinna-formalization/releases/tag/private-review-20260928)
+is available; extract it and run `python3 preview.py` to open it locally.
+
+<details>
+<summary>Build instructions and repository structure</summary>
 
 ## Repository structure
 
@@ -84,6 +86,14 @@ The four tools in `scripts/` have distinct roles:
 review the regenerated PDF before refreshing that snapshot. Website builds
 use the newly generated PDF.
 
+</details>
+
+<details>
+<summary>Mathematical scope, reading order, and verification status</summary>
+
+The target list covers 26 numbered or section-level results, seven explicit
+examples, and two unnumbered counterexamples.
+
 ## Mathematical reading order
 
 | Paper section | Main objects and results | Reader-facing Lean file |
@@ -120,6 +130,8 @@ Changes must preserve definitions, hypotheses, quantifiers, and conclusions.
 Do not add `sorry`, `admit`, or project-specific axioms. Update the Blueprint
 when a paper-level statement changes, and rerun the build and declaration checks.
 
+</details>
+
 ## License
 
 The project-authored Lean code, Python tools, and build configuration are
@@ -136,6 +148,9 @@ exposition, or the mathematical content of the dependency maps. Material
 reproduced or adapted from the paper remains subject to its applicable license
 and attribution requirements. No separate license is currently specified for
 the project's original mathematical exposition and dependency-map content.
+
+<details>
+<summary>Paper attribution and dependency maps</summary>
 
 ## Original paper and dependency maps
 
@@ -159,3 +174,5 @@ The homepage assets also include two dependency maps:
 GitHub's file viewer displays HTML source. Download and open these maps in a
 browser, or use the local website described above. Website builds use these
 same files, adjusting only the links to the generated Blueprint pages.
+
+</details>
