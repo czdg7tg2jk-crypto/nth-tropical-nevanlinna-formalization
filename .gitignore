@@ -1,0 +1,35 @@
+# Local metadata and credentials.
+.DS_Store
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+
+# Lean, Python, and generated website output.
+.lake/
+.blueprint-venv/
+.venv/
+/blueprint/web/
+/blueprint/print/
+/blueprint/lean_decls
+/blueprint/*.webloc
+/.local-site/
+/.pages-site/
+/tmp/
+
+# TeX build intermediates; reading PDFs remain tracked.
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.paux
+*.synctex.gz
+*.toc
+
+# Local archives and presentations.
+*.zip
+/Presentation/
+/output/
+/github-ready/

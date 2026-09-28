@@ -1,0 +1,54 @@
+% This file makes a web version of the blueprint
+% It should include all the \usepackage needed for this version.
+% The template includes standard AMS packages.
+% It is otherwise a very minimal preamble (you should probably at least
+% add cleveref and tikz-cd).
+
+\documentclass{article}
+
+\usepackage{amssymb, amsthm, amsmath}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage[
+  showmore,
+  dep_graph,
+  nonreducedgraph,
+  thms=definition+lemma+proposition+theorem+corollary+example,
+  tpl=dep_graph.html
+]{blueprint}
+
+
+% plasTeX does not reliably resolve nested \input paths when the repository
+% path contains spaces, so the small shared declaration block is repeated in
+% the web driver.  Keep it synchronized with macros/common.tex.
+\newtheorem*{theorem}{Theorem}
+\newtheorem*{proposition}{Proposition}
+\newtheorem*{lemma}{Lemma}
+\newtheorem*{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem*{definition}{Definition}
+\newtheorem*{example}{Example}
+\theoremstyle{remark}
+\newtheorem*{leanproof}{Formalization map}
+\newcommand{\leanfile}[1]{\texttt{#1}}
+\newcommand{\R}{\mathbb R}
+\newcommand{\N}{\mathbb N}
+\newcommand{\TP}{\mathbb{TP}}
+\newcommand{\oplusT}{\mathbin{\oplus}}
+\newcommand{\otimesT}{\mathbin{\otimes}}
+\newcommand{\oslashT}{\mathbin{\oslash}}
+\newcommand{\littleo}{o}
+\newcommand{\paperlabel}[1]{\label{#1}}
+\usepackage{paperlabels}
+
+\home{..}
+\github{}
+\dochome{../docs}
+
+\title{$n$-th Tropical Nevanlinna Theory}
+\author{}
+
+\begin{document}
+\maketitle
+\input{content}
+\end{document}

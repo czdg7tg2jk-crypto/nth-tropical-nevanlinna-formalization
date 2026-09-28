@@ -1,0 +1,54 @@
+% This file makes a printable version of the blueprint
+% It should include all the \usepackage needed for the pdf version.
+% The template version assume you want to use a modern TeX compiler
+% such as xeLaTeX or luaLaTeX including support for unicode
+% and Latin Modern Math font with standard bugfixes applied.
+% It also uses expl3 in order to support macros related to the dependency graph.
+% It also includes standard AMS packages (and their improved version
+% mathtools) as well as support for links with a sober decoration
+% (no ugly rectangles around links).
+% It is otherwise a very minimal preamble (you should probably at least
+% add cleveref and tikz-cd).
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=28mm,headheight=14pt]{geometry}
+
+\usepackage{expl3}
+
+\usepackage{amssymb, amsthm, mathtools}
+\usepackage{xcolor,xurl,microtype}
+\usepackage[unicode,colorlinks=true,linkcolor=blue,urlcolor=magenta, citecolor=blue]{hyperref}
+
+\usepackage[warnings-off={mathtools-colon,mathtools-overbracket}]{unicode-math}
+\setmainfont{LibertinusSerif-Regular.otf}[
+  BoldFont=LibertinusSerif-Bold.otf,
+  ItalicFont=LibertinusSerif-Italic.otf,
+  BoldItalicFont=LibertinusSerif-BoldItalic.otf
+]
+\setsansfont{LibertinusSans-Regular.otf}[
+  BoldFont=LibertinusSans-Bold.otf,
+  ItalicFont=LibertinusSans-Italic.otf
+]
+\setmonofont{LibertinusMono-Regular.otf}[Scale=MatchLowercase]
+\setmathfont{LibertinusMath-Regular.otf}
+
+\definecolor{BlueprintBlue}{HTML}{245C7C}
+\definecolor{BlueprintViolet}{HTML}{6B4A72}
+\hypersetup{linkcolor=BlueprintBlue,urlcolor=BlueprintViolet,citecolor=BlueprintBlue}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45em plus 0.1em minus 0.05em}
+\setlength{\emergencystretch}{2em}
+
+\input{macros/common.tex}
+\input{macros/print.tex}
+
+\title{$n$-th Tropical Nevanlinna Theory\\
+\large Lean Blueprint}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+\input{content}
+\end{document}

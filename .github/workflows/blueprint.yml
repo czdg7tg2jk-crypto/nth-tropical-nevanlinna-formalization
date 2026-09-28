@@ -1,0 +1,98 @@
+name: Compile blueprint
+
+on:
+  push:
+    branches:
+      - main # Trigger on pushes to the default branch
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Deploy the reviewed website to GitHub Pages'
+        type: boolean
+        required: false
+        default: false
+
+# Cancel previous runs if a new commit is pushed to the same PR or branch
+concurrency:
+  group: ${{ github.ref }}  # Group runs by the ref (branch or PR)
+  cancel-in-progress: true  # Cancel any ongoing runs in the same group
+
+permissions:
+  contents: read
+
+jobs:
+  build_project:
+    runs-on: ubuntu-latest
+    name: Build project
+    steps:
+      - name: Cleanup to free disk space
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.0
+        with:
+          tool-cache: false
+          android: true
+          dotnet: false
+          haskell: false
+          large-packages: false
+          docker-images: false
+          swap-storage: false
+
+      - name: Checkout project
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0 # Fetch all history for all branches and tags
+
+      - name: Check sources, reading links, and dependency maps
+        run: python3 scripts/check.py --tracked
+
+      - name: Build project
+        uses: leanprover/lean-action@434f25c2f80ded67bba02502ad3a86f25db50709 # 2025-07-02
+        with:
+          build: true
+          # No Lake lint driver is defined; Lean's own linters still run on build.
+          lint: false
+          # Keep the paper-order entry point; check its import closure above.
+          mk_all-check: false
+
+      - name: Compile Blueprint
+        uses: xu-cheng/texlive-action@f886de8159e5952a131848a5fa9c3196a2132b5d
+        with:
+          docker_image: ghcr.io/xu-cheng/texlive-full:20250401
+          run: |
+            apk add --update make py3-pip git pkgconfig graphviz graphviz-dev gcc musl-dev
+            python3 -m venv /tmp/blueprint-env
+            . /tmp/blueprint-env/bin/activate
+            pip install -r blueprint/requirements.txt
+            leanblueprint pdf
+            leanblueprint web
+
+      - name: Compile Lean API documentation
+        working-directory: docbuild
+        run: lake build NthTropicalNevanlinna:docs
+
+      - name: Check Blueprint declaration links
+        run: lake exe checkdecls blueprint/lean_decls
+
+      - name: Assemble and check website
+        run: python3 scripts/site.py assemble --compact --output "${RUNNER_TEMP}/nth-tropical-site"
+
+      - name: Upload website
+        if: github.event_name == 'workflow_dispatch' && inputs.deploy
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
+        with:
+          path: ${{ runner.temp }}/nth-tropical-site
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/main'
+    needs: build_project
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy reviewed website
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e

@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mathematical dependency graph - n-th Tropical Nevanlinna Theory</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --paper: #f5f6f7;
+      --surface: #ffffff;
+      --ink: #17212b;
+      --muted: #65717d;
+      --rule: #d8dee4;
+      --accent: #245c7c;
+      --accent-soft: #edf4f7;
+      --result: #f5f1e8;
+      --verified: #2f6f55;
+      --edge: #81919c;
+      --edge-active: #245c7c;
+      --shadow: 0 10px 30px rgba(23, 33, 43, .08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+    main { max-width: 1420px; margin: 0 auto; padding: 44px 26px 64px; }
+    h1, h2, p { margin-top: 0; }
+    h1, h2, .math, .node-title, .detail-title {
+      font-family: "STIX Two Text", "Libertinus Serif", Georgia, serif;
+    }
+    .math { font-style: italic; }
+    h1 { margin-bottom: 9px; font-size: clamp(2rem, 4vw, 3rem); font-weight: 600; line-height: 1.08; }
+    h2 { margin-bottom: 5px; font-size: 1.5rem; font-weight: 600; }
+    a { color: var(--accent); text-underline-offset: 3px; }
+
+    .eyebrow {
+      margin-bottom: 10px;
+      color: var(--accent);
+      font-size: .74rem;
+      font-weight: 700;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+    .lede { max-width: 72ch; margin-bottom: 0; color: var(--muted); }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 9px; margin: 22px 0 30px; }
+    .toolbar a {
+      padding: 7px 11px;
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      background: var(--surface);
+      text-decoration: none;
+      font-size: .86rem;
+    }
+    .toolbar a:hover, .toolbar a:focus-visible { border-color: var(--accent); }
+
+    .graph-panel, .reading-note {
+      border: 1px solid var(--rule);
+      border-radius: 14px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .graph-panel { padding: 24px; }
+    .graph-heading { display: flex; justify-content: space-between; gap: 20px; align-items: start; }
+    .graph-heading p { max-width: 72ch; margin-bottom: 0; color: var(--muted); }
+    .status { color: var(--verified); font-size: .8rem; font-weight: 650; white-space: nowrap; }
+    .status::before { content: "✓"; margin-right: 6px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 7px 16px; margin-top: 16px; color: var(--muted); font-size: .76rem; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend i { display: inline-block; width: 17px; height: 10px; border: 2px solid var(--rule); background: var(--surface); }
+    .legend .result-mark { border-radius: 999px; background: var(--result); }
+    .legend .edge-mark { width: 20px; height: 0; border: 0; border-top: 2px solid var(--edge); }
+
+    .dag-scroll { margin-top: 22px; overflow-x: auto; }
+    .dag { position: relative; min-width: 1460px; padding: 20px 12px; }
+    .dag-svg { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+    .dag-levels { position: relative; z-index: 1; display: grid; gap: 72px; }
+    .dag-level { display: flex; justify-content: center; align-items: stretch; gap: 22px; min-height: 92px; }
+    .dep-edge {
+      fill: none;
+      stroke: var(--edge);
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      marker-end: url(#dag-arrow);
+      transition: opacity 140ms ease, stroke 140ms ease, stroke-width 140ms ease;
+    }
+    .dep-edge.is-dim { opacity: .08; }
+    .dep-edge.is-active { stroke: var(--edge-active); stroke-width: 2.7; marker-end: url(#dag-arrow-active); opacity: 1; }
+    .arrow-head { fill: var(--edge); }
+    .arrow-head-active { fill: var(--edge-active); }
+
+    .node {
+      width: 188px;
+      height: 108px;
+      min-height: 92px;
+      padding: 11px 12px;
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(23, 33, 43, .05);
+      transition: opacity 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+    }
+    .node[data-kind="result"] { border-radius: 18px; background: var(--result); }
+    .node:hover, .node:focus-visible { border-color: var(--accent); }
+    .node.is-selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+    .node.is-related { border-color: var(--edge-active); }
+    .node.is-dim { opacity: .24; }
+    .node-meta { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+    .node-code { color: var(--accent); font-family: "STIX Two Text", "Libertinus Serif", Georgia, serif; font-size: .78rem; }
+    .node-section { color: var(--muted); font-size: .66rem; letter-spacing: .06em; text-transform: uppercase; }
+    .node-title { display: block; font-size: .94rem; font-weight: 600; line-height: 1.2; }
+    .node-kind { display: block; margin-top: 7px; color: var(--muted); font-size: .64rem; letter-spacing: .06em; text-transform: uppercase; }
+
+    .node-detail {
+      display: grid;
+      grid-template-columns: minmax(200px, .8fr) minmax(300px, 1.5fr);
+      gap: 18px 30px;
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid var(--rule);
+    }
+    .detail-label { margin-bottom: 4px; color: var(--muted); font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; }
+    .detail-title { margin-bottom: 7px; font-size: 1.06rem; font-weight: 600; }
+    .detail-description { margin-bottom: 0; color: var(--muted); }
+    .detail-list { margin: 0; padding-left: 1.1rem; }
+    .detail-list li { margin: 2px 0; }
+    .detail-source { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .76rem; overflow-wrap: anywhere; }
+    .reading-note { margin-top: 20px; padding: 17px 21px; color: var(--muted); font-size: .9rem; }
+    .reading-note strong { color: var(--ink); }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --paper: #11171c;
+        --surface: #182128;
+        --ink: #edf1f4;
+        --muted: #aab4bd;
+        --rule: #35434e;
+        --accent: #8fc9e9;
+        --accent-soft: #203746;
+        --result: #2c2a22;
+        --verified: #83c9aa;
+        --edge: #748894;
+        --edge-active: #8fc9e9;
+        --shadow: none;
+      }
+    }
+    @media (max-width: 760px) {
+      main { padding: 28px 14px 44px; }
+      .graph-panel { padding: 17px; }
+      .graph-heading { display: block; }
+      .status { display: block; margin-top: 10px; }
+      .node-detail { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Formal proof map</div>
+  <h1>Mathematical dependency graph</h1>
+  <p class="lede">All paper sections are shown in one directed acyclic graph. An arrow from A to B means that B uses A.</p>
+
+  <nav class="toolbar" aria-label="Related resources">
+    <a href="../blueprint/web/index.html">Web Blueprint</a>
+    <a href="../blueprint/web/dep_graph_document.html">Declaration-level graph</a>
+    <a href="../blueprint/print/print.pdf">Blueprint PDF</a>
+    <a href="nth_tropical_nevanlinna_lean_structure.html">Lean architecture</a>
+  </nav>
+
+  <section class="graph-panel" aria-labelledby="graph-title">
+    <div class="graph-heading">
+      <div>
+        <h2 id="graph-title">From tropicalization to truncation</h2>
+        <p>Definitions are rectangular; results are rounded. Section labels identify the paper order without splitting the graph.</p>
+      </div>
+      <div class="status">Lean verified</div>
+    </div>
+    <div class="legend" aria-label="Graph legend">
+      <span><i></i>Definition</span>
+      <span><i class="result-mark"></i>Result or example</span>
+      <span><i class="edge-mark"></i>Direct dependency</span>
+    </div>
+    <div class="dag-scroll">
+      <div class="dag" id="dag" style="height:1948px">
+        <svg class="dag-svg" id="dag-svg" aria-hidden="true" viewBox="0 0 1460 1948" width="1460" height="1948">
+          <defs>
+            <marker id="dag-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path class="arrow-head" d="M 0 0 L 10 5 L 0 10 z"></path>
+            </marker>
+            <marker id="dag-arrow-active" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path class="arrow-head-active" d="M 0 0 L 10 5 L 0 10 z"></path>
+            </marker>
+          </defs>
+          <g id="dag-edge-layer"><path class="dep-edge" data-source="trop" data-target="troprules" d="M 415.0 128.0 C 415.0 164.0, 520.0 164.0, 520.0 200.0"></path>
+<path class="dep-edge" data-source="mero" data-target="mult" d="M 625.0 128.0 C 625.0 164.0, 730.0 164.0, 730.0 200.0"></path>
+<path class="dep-edge" data-source="mult" data-target="p22" d="M 730.0 308.0 C 730.0 344.0, 100.0 344.0, 100.0 380.0"></path>
+<path class="dep-edge" data-source="mult" data-target="p23" d="M 730.0 308.0 C 730.0 344.0, 310.0 344.0, 310.0 380.0"></path>
+<path class="dep-edge" data-source="mero" data-target="l31" d="M 625.0 128.0 C 625.0 254.0, 520.0 254.0, 520.0 380.0"></path>
+<path class="dep-edge" data-source="mult" data-target="l31" d="M 730.0 308.0 C 730.0 344.0, 520.0 344.0, 520.0 380.0"></path>
+<path class="dep-edge" data-source="mult" data-target="regions" d="M 730.0 308.0 C 730.0 344.0, 730.0 344.0, 730.0 380.0"></path>
+<path class="dep-edge" data-source="regions" data-target="l32" d="M 730.0 488.0 C 730.0 524.0, 100.0 524.0, 100.0 560.0"></path>
+<path class="dep-edge" data-source="l31" data-target="t33" d="M 520.0 488.0 C 520.0 614.0, 310.0 614.0, 310.0 740.0"></path>
+<path class="dep-edge" data-source="kernels" data-target="t33" d="M 835.0 128.0 C 835.0 434.0, 310.0 434.0, 310.0 740.0"></path>
+<path class="dep-edge" data-source="l32" data-target="t33" d="M 100.0 668.0 C 100.0 704.0, 310.0 704.0, 310.0 740.0"></path>
+<path class="dep-edge" data-source="mult" data-target="counts" d="M 730.0 308.0 C 730.0 344.0, 940.0 344.0, 940.0 380.0"></path>
+<path class="dep-edge" data-source="t33" data-target="t35" d="M 310.0 848.0 C 310.0 884.0, 730.0 884.0, 730.0 920.0"></path>
+<path class="dep-edge" data-source="counts" data-target="t35" d="M 940.0 488.0 C 940.0 704.0, 730.0 704.0, 730.0 920.0"></path>
+<path class="dep-edge" data-source="counts" data-target="growth" d="M 940.0 488.0 C 940.0 524.0, 310.0 524.0, 310.0 560.0"></path>
+<path class="dep-edge" data-source="counts" data-target="p38" d="M 940.0 488.0 C 940.0 614.0, 520.0 614.0, 520.0 740.0"></path>
+<path class="dep-edge" data-source="growth" data-target="p38" d="M 310.0 668.0 C 310.0 704.0, 520.0 704.0, 520.0 740.0"></path>
+<path class="dep-edge" data-source="hyperexp" data-target="p38" d="M 1045.0 128.0 C 1045.0 434.0, 520.0 434.0, 520.0 740.0"></path>
+<path class="dep-edge" data-source="mero" data-target="d42" d="M 625.0 128.0 C 625.0 164.0, 940.0 164.0, 940.0 200.0"></path>
+<path class="dep-edge" data-source="d42" data-target="l43" d="M 940.0 308.0 C 940.0 344.0, 1150.0 344.0, 1150.0 380.0"></path>
+<path class="dep-edge" data-source="l43" data-target="l44" d="M 1150.0 488.0 C 1150.0 524.0, 520.0 524.0, 520.0 560.0"></path>
+<path class="dep-edge" data-source="counts" data-target="l44" d="M 940.0 488.0 C 940.0 524.0, 520.0 524.0, 520.0 560.0"></path>
+<path class="dep-edge" data-source="l31" data-target="l45" d="M 520.0 488.0 C 520.0 794.0, 415.0 794.0, 415.0 1100.0"></path>
+<path class="dep-edge" data-source="t35" data-target="l45" d="M 730.0 1028.0 C 730.0 1064.0, 415.0 1064.0, 415.0 1100.0"></path>
+<path class="dep-edge" data-source="l44" data-target="l45" d="M 520.0 668.0 C 520.0 884.0, 415.0 884.0, 415.0 1100.0"></path>
+<path class="dep-edge" data-source="growth" data-target="l46" d="M 310.0 668.0 C 310.0 704.0, 730.0 704.0, 730.0 740.0"></path>
+<path class="dep-edge" data-source="l45" data-target="t47" d="M 415.0 1208.0 C 415.0 1244.0, 625.0 1244.0, 625.0 1280.0"></path>
+<path class="dep-edge" data-source="l46" data-target="t47" d="M 730.0 848.0 C 730.0 1064.0, 625.0 1064.0, 625.0 1280.0"></path>
+<path class="dep-edge" data-source="t47" data-target="c48" d="M 625.0 1388.0 C 625.0 1424.0, 730.0 1424.0, 730.0 1460.0"></path>
+<path class="dep-edge" data-source="mero" data-target="curve" d="M 625.0 128.0 C 625.0 254.0, 1360.0 254.0, 1360.0 380.0"></path>
+<path class="dep-edge" data-source="mult" data-target="curve" d="M 730.0 308.0 C 730.0 344.0, 1360.0 344.0, 1360.0 380.0"></path>
+<path class="dep-edge" data-source="curve" data-target="p524" d="M 1360.0 488.0 C 1360.0 794.0, 625.0 794.0, 625.0 1100.0"></path>
+<path class="dep-edge" data-source="p22" data-target="p524" d="M 100.0 488.0 C 100.0 794.0, 625.0 794.0, 625.0 1100.0"></path>
+<path class="dep-edge" data-source="t35" data-target="p524" d="M 730.0 1028.0 C 730.0 1064.0, 625.0 1064.0, 625.0 1100.0"></path>
+<path class="dep-edge" data-source="curve" data-target="hompoly" d="M 1360.0 488.0 C 1360.0 524.0, 730.0 524.0, 730.0 560.0"></path>
+<path class="dep-edge" data-source="t35" data-target="t56" d="M 730.0 1028.0 C 730.0 1064.0, 835.0 1064.0, 835.0 1100.0"></path>
+<path class="dep-edge" data-source="curve" data-target="t56" d="M 1360.0 488.0 C 1360.0 794.0, 835.0 794.0, 835.0 1100.0"></path>
+<path class="dep-edge" data-source="hompoly" data-target="t56" d="M 730.0 668.0 C 730.0 884.0, 835.0 884.0, 835.0 1100.0"></path>
+<path class="dep-edge" data-source="t56" data-target="c57" d="M 835.0 1208.0 C 835.0 1244.0, 835.0 1244.0, 835.0 1280.0"></path>
+<path class="dep-edge" data-source="curve" data-target="t58" d="M 1360.0 488.0 C 1360.0 524.0, 940.0 524.0, 940.0 560.0"></path>
+<path class="dep-edge" data-source="counts" data-target="t58" d="M 940.0 488.0 C 940.0 524.0, 940.0 524.0, 940.0 560.0"></path>
+<path class="dep-edge" data-source="t58" data-target="e5910" d="M 940.0 668.0 C 940.0 704.0, 940.0 704.0, 940.0 740.0"></path>
+<path class="dep-edge" data-source="counts" data-target="casor" d="M 940.0 488.0 C 940.0 524.0, 1150.0 524.0, 1150.0 560.0"></path>
+<path class="dep-edge" data-source="t35" data-target="finite" d="M 730.0 1028.0 C 730.0 1064.0, 1045.0 1064.0, 1045.0 1100.0"></path>
+<path class="dep-edge" data-source="casor" data-target="finite" d="M 1150.0 668.0 C 1150.0 884.0, 1045.0 884.0, 1045.0 1100.0"></path>
+<path class="dep-edge" data-source="casor" data-target="l61" d="M 1150.0 668.0 C 1150.0 704.0, 1150.0 704.0, 1150.0 740.0"></path>
+<path class="dep-edge" data-source="mult" data-target="shiftcount" d="M 730.0 308.0 C 730.0 434.0, 1360.0 434.0, 1360.0 560.0"></path>
+<path class="dep-edge" data-source="counts" data-target="shiftcount" d="M 940.0 488.0 C 940.0 524.0, 1360.0 524.0, 1360.0 560.0"></path>
+<path class="dep-edge" data-source="t35" data-target="t62" d="M 730.0 1028.0 C 730.0 1334.0, 730.0 1334.0, 730.0 1640.0"></path>
+<path class="dep-edge" data-source="c48" data-target="t62" d="M 730.0 1568.0 C 730.0 1604.0, 730.0 1604.0, 730.0 1640.0"></path>
+<path class="dep-edge" data-source="p524" data-target="t62" d="M 625.0 1208.0 C 625.0 1424.0, 730.0 1424.0, 730.0 1640.0"></path>
+<path class="dep-edge" data-source="l61" data-target="t62" d="M 1150.0 848.0 C 1150.0 1244.0, 730.0 1244.0, 730.0 1640.0"></path>
+<path class="dep-edge" data-source="shiftcount" data-target="t62" d="M 1360.0 668.0 C 1360.0 1154.0, 730.0 1154.0, 730.0 1640.0"></path>
+<path class="dep-edge" data-source="t62" data-target="c63" d="M 730.0 1748.0 C 730.0 1784.0, 730.0 1784.0, 730.0 1820.0"></path></g>
+        </svg>
+        <div class="dag-levels" id="dag-levels"><div class="dag-level"><button type="button" class="node" data-id="trop" data-kind="definition" data-section="2" aria-pressed="false" title="Finite log-sum-exp, rational factors, and active n-factor dequantization."><span class="node-meta"><span class="node-code">2.0</span><span class="node-section">Section 2</span></span><span class="node-title">n-th tropicalization</span><span class="node-kind">Definition</span></button><button type="button" class="node" data-id="mero" data-kind="definition" data-section="2" aria-pressed="false" title="Continuous locally finite piecewise-polynomial functions of exact order n."><span class="node-meta"><span class="node-code">2.1</span><span class="node-section">Section 2</span></span><span class="node-title">n-th tropical meromorphic functions</span><span class="node-kind">Definition</span></button><button type="button" class="node" data-id="kernels" data-kind="definition" data-section="3" aria-pressed="false" title="The symmetric kernels B_k, D_k, and E used in the coefficient reduction."><span class="node-meta"><span class="node-code">3.A</span><span class="node-section">Section 3</span></span><span class="node-title">Poisson-Jensen kernels</span><span class="node-kind">Definition</span></button><button type="button" class="node" data-id="hyperexp" data-kind="definition" data-section="3" aria-pressed="false" title="The first-order and generalized tropical hyper-exponential families."><span class="node-meta"><span class="node-code">3.7</span><span class="node-section">Section 3</span></span><span class="node-title">Tropical hyper-exponentials</span><span class="node-kind">Definition</span></button></div>
+<div class="dag-level"><button type="button" class="node" data-id="troprules" data-kind="result" data-section="2" aria-pressed="false" title="Finite maxima, rational factors, products, and quotients obey the formalized tropicalization rules."><span class="node-meta"><span class="node-code">2.A</span><span class="node-section">Section 2</span></span><span class="node-title">Tropicalization rules</span><span class="node-kind">Result</span></button><button type="button" class="node" data-id="mult" data-kind="definition" data-section="2" aria-pressed="false" title="Intrinsic signed one-sided jets define roots, poles, and their multiplicities."><span class="node-meta"><span class="node-code">2.2</span><span class="node-section">Section 2</span></span><span class="node-title">Multiplicities, roots, poles, and entire functions</span><span class="node-kind">Definition</span></button><button type="button" class="node" data-id="d42" data-kind="definition" data-section="4" aria-pressed="false" title="Polynomial pieces obey the common parity and coefficient-sign condition."><span class="node-meta"><span class="node-code">D4.2</span><span class="node-section">Section 4</span></span><span class="node-title">Well-defined polynomial pieces</span><span class="node-kind">Definition</span></button></div>
+<div class="dag-level"><button type="button" class="node" data-id="p22" data-kind="result" data-section="2" aria-pressed="false" title="Entire functions satisfy the centered endpoint inequality, with equality in the nowhere-vanishing case."><span class="node-meta"><span class="node-code">P2.2</span><span class="node-section">Section 2</span></span><span class="node-title">Endpoint mean inequality</span><span class="node-kind">Result</span></button><button type="button" class="node" data-id="p23" data-kind="result" data-section="2" aria-pressed="false" title="Every meromorphic function is a difference of entire functions without common roots or poles."><span class="node-meta"><span class="node-code">P2.3</span><span class="node-section">Section 2</span></span><span class="node-title">Entire quotient decomposition</span><span class="node-kind">Result</span></button><button type="button" class="node" data-id="l31" data-kind="result" data-section="3" aria-pressed="false" title="Endpoint identities on arbitrary bounded intervals, expressed through genuine derivative jumps."><span class="node-meta"><span class="node-code">L3.1</span><span class="node-section">Section 3</span></span><span class="node-title">Finite telescoping</span><span class="node-kind">Result</span></button><button type="button" class="node" data-id="regions" data-kind="definition" data-section="3" aria-pressed="false" title="The regions F_1,...,F_9 classify the auxiliary multiplicity expressions."><span class="node-meta"><span class="node-code">3.B</span><span class="node-section">Section 3</span></span><span class="node-title">Nine regions and auxiliary jumps</span><span class="node-kind">Definition</span></button><button type="button" class="node" data-id="counts" data-kind="definition" data-section="3" aria-pressed="false" title="Proximity, partial and integrated counts, characteristic, order, and hyper-order."><span class="node-meta"><span class="node-code">3.C</span><span class="node-section">Section 3</span></span><span class="node-title">Counting and characteristic functions</span><span class="node-kind">Definition</span></button><button type="button" class="node" data-id="l43" data-kind="result" data-section="4" aria-pressed="false" title="All positive-order radial derivatives have one common weak sign."><span class="node-meta"><span class="node-code">L4.3</span><span class="node-section">Section 4</span></span><span class="node-title">Radial derivative signs</span><span class="node-kind">Result</span></button><button type="button" class="node" data-id="curve" data-kind="definition" data-section="5" aria-pressed="false" title="Reduced representations and the Cartan characteristic T_f."><span class="node-meta"><span class="node-code">5.1</span><span class="node-section">Section 5</span></span><span class="node-title">Tropical holomorphic curves</span><span class="node-kind">Definition</span></button></div>
+<div class="dag-level"><button type="button" class="node" data-id="l32" data-kind="result" data-section="3" aria-pressed="false" title="Auxiliary jumps reduce to intrinsic multiplicities in all nine regions."><span class="node-meta"><span class="node-code">L3.2</span><span class="node-section">Section 3</span></span><span class="node-title">Nine-region reduction</span><span class="node-kind">Result</span></button><button type="button" class="node" data-id="growth" data-kind="definition" data-section="3" aria-pressed="false" title="Growth invariants defined by EReal-valued limsup expressions."><span class="node-meta"><span class="node-code">3.6</span><span class="node-section">Section 3</span></span><span class="node-title">Order and hyper-order</span><span class="node-kind">Definition</span></button><button type="button" class="node" data-id="l44" data-kind="result" data-section="4" aria-pressed="false" title="The characteristic is nonnegative, nondecreasing, and convex."><span class="node-meta"><span class="node-code">L4.4</span><span class="node-section">Section 4</span></span><span class="node-title">Characteristic monotonicity</span><span class="node-kind">Result</span></button><button type="button" class="node" data-id="hompoly" data-kind="definition" data-section="5" aria-pressed="false" title="Finite-support homogeneous polynomials, composition, and degree bounds."><span class="node-meta"><span class="node-code">5.2</span><span class="node-section">Section 5</span></span><span class="node-title">Homogeneous tropical polynomials</span><span class="node-kind">Definition</span></button><button type="button" class="node" data-id="t58" data-kind="result" data-section="5" aria-pressed="false" title="Endpoint growth and multiplicity algebra give the two-sided ordinary-power estimate."><span class="node-meta"><span class="node-code">T5.8</span><span class="node-section">Section 5</span></span><span class="node-title">Ordinary Fermat estimate</span><span class="node-kind">Result</span></button><button type="button" class="node" data-id="casor" data-kind="definition" data-section="6" aria-pressed="false" title="Forward shifts, partial counts, and the permutation supremum."><span class="node-meta"><span class="node-code">6.0</span><span class="node-section">Section 6</span></span><span class="node-title">Shifts and tropical Casoratian</span><span class="node-kind">Definition</span></button><button type="button" class="node" data-id="shiftcount" data-kind="result" data-section="6" aria-pressed="false" title="Odd-order transport is exact; even orders carry a finite central correction."><span class="node-meta"><span class="node-code">6.B</span><span class="node-section">Section 6</span></span><span class="node-title">Shift-counting comparison</span><span class="node-kind">Result</span></button></div>
+<div class="dag-level"><button type="button" class="node" data-id="t33" data-kind="result" data-section="3" aria-pressed="false" title="Endpoint jets and all root and pole contributions combine into the n-th tropical Poisson-Jensen identity."><span class="node-meta"><span class="node-code">T3.3</span><span class="node-section">Section 3</span></span><span class="node-title">Poisson-Jensen formula</span><span class="node-kind">Result</span></button><button type="button" class="node" data-id="p38" data-kind="result" data-section="3" aria-pressed="false" title="The generalized hyper-exponential is entire, nondecreasing, and has hyper-order one."><span class="node-meta"><span class="node-code">P3.8</span><span class="node-section">Section 3</span></span><span class="node-title">Hyper-exponential growth</span><span class="node-kind">Result</span></button><button type="button" class="node" data-id="l46" data-kind="result" data-section="4" aria-pressed="false" title="A hyper-order bound produces a finite logarithmic-measure exceptional set."><span class="node-meta"><span class="node-code">L4.6</span><span class="node-section">Section 4</span></span><span class="node-title">Growth shift</span><span class="node-kind">Result</span></button><button type="button" class="node" data-id="e5910" data-kind="result" data-section="5" aria-pressed="false" title="Concrete curves test the growth hypothesis and attain the constants in Theorem 5.8."><span class="node-meta"><span class="node-code">E5.9-5.10</span><span class="node-section">Section 5</span></span><span class="node-title">Sharpness examples</span><span class="node-kind">Result</span></button><button type="button" class="node" data-id="l61" data-kind="result" data-section="6" aria-pressed="false" title="A common tropical factor separates by permutation reindexing."><span class="node-meta"><span class="node-code">L6.1</span><span class="node-section">Section 6</span></span><span class="node-title">Casoratian common factor</span><span class="node-kind">Result</span></button></div>
+<div class="dag-level"><button type="button" class="node" data-id="t35" data-kind="result" data-section="3" aria-pressed="false" title="The characteristic satisfies T(r,f) = T(r,-f) + f(0)."><span class="node-meta"><span class="node-code">T3.5</span><span class="node-section">Section 3</span></span><span class="node-title">Jensen identity</span><span class="node-kind">Result</span></button></div>
+<div class="dag-level"><button type="button" class="node" data-id="l45" data-kind="result" data-section="4" aria-pressed="false" title="A finite-radius shift is bounded explicitly by characteristic data."><span class="node-meta"><span class="node-code">L4.5</span><span class="node-section">Section 4</span></span><span class="node-title">Pointwise shift estimate</span><span class="node-kind">Result</span></button><button type="button" class="node" data-id="p524" data-kind="result" data-section="5" aria-pressed="false" title="Representation invariance, the projective-pair identity, and coordinate quotient bounds."><span class="node-meta"><span class="node-code">P5.2-5.4</span><span class="node-section">Section 5</span></span><span class="node-title">Curve characteristic identities</span><span class="node-kind">Result</span></button><button type="button" class="node" data-id="t56" data-kind="result" data-section="5" aria-pressed="false" title="Signed counting and polynomial degree bounds give the characteristic identity."><span class="node-meta"><span class="node-code">T5.6</span><span class="node-section">Section 5</span></span><span class="node-title">Tropical polynomial second main theorem</span><span class="node-kind">Result</span></button><button type="button" class="node" data-id="finite" data-kind="result" data-section="6" aria-pressed="false" title="Eventual affine counting identities imply first-order asymptotic equivalence."><span class="node-meta"><span class="node-code">6.A</span><span class="node-section">Section 6</span></span><span class="node-title">Finite-root identity</span><span class="node-kind">Result</span></button></div>
+<div class="dag-level"><button type="button" class="node" data-id="t47" data-kind="result" data-section="4" aria-pressed="false" title="Both radial shift estimates hold outside one exceptional set."><span class="node-meta"><span class="node-code">T4.7</span><span class="node-section">Section 4</span></span><span class="node-title">Pointwise logarithmic derivative</span><span class="node-kind">Result</span></button><button type="button" class="node" data-id="c57" data-kind="result" data-section="5" aria-pressed="false" title="The second main theorem specializes to an entire tropical Fermat composition."><span class="node-meta"><span class="node-code">C5.7</span><span class="node-section">Section 5</span></span><span class="node-title">First-order Fermat case</span><span class="node-kind">Result</span></button></div>
+<div class="dag-level"><button type="button" class="node" data-id="c48" data-kind="result" data-section="4" aria-pressed="false" title="The pointwise estimate yields the proximity form."><span class="node-meta"><span class="node-code">C4.8</span><span class="node-section">Section 4</span></span><span class="node-title">Logarithmic derivative lemma</span><span class="node-kind">Result</span></button></div>
+<div class="dag-level"><button type="button" class="node" data-id="t62" data-kind="result" data-section="6" aria-pressed="false" title="Counting comparison, Casoratian factorization, logarithmic differences, and curve bounds assemble the truncated relation."><span class="node-meta"><span class="node-code">T6.2</span><span class="node-section">Section 6</span></span><span class="node-title">Truncated second main theorem</span><span class="node-kind">Result</span></button></div>
+<div class="dag-level"><button type="button" class="node" data-id="c63" data-kind="result" data-section="6" aria-pressed="false" title="At first order the higher-order correction terms disappear."><span class="node-meta"><span class="node-code">C6.3</span><span class="node-section">Section 6</span></span><span class="node-title">First-order truncated relation</span><span class="node-kind">Result</span></button></div></div>
+      </div>
+    </div>
+    <div class="node-detail" aria-live="polite">
+      <div>
+        <div class="detail-label">Selected item</div>
+        <div class="detail-title" id="detail-title"></div>
+        <a class="detail-source" id="detail-source"></a>
+      </div>
+      <div>
+        <p class="detail-description" id="detail-description"></p>
+        <div class="detail-label" style="margin-top:11px">Direct prerequisites</div>
+        <ul class="detail-list" id="detail-inputs"></ul>
+        <div class="detail-label" style="margin-top:11px">Direct consequences</div>
+        <ul class="detail-list" id="detail-outputs"></ul>
+      </div>
+    </div>
+  </section>
+
+  <aside class="reading-note">
+    <strong>Interaction.</strong> Select a node to isolate its immediate prerequisites and consequences; select it again to restore the complete graph.
+  </aside>
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  const nodes = [
+    { id:"trop", code:"2.0", section:"2", title:"n-th tropicalization", description:"Finite log-sum-exp, rational factors, and active n-factor dequantization.", path:"../NthTropicalNevanlinna/Function/Tropicalization.lean", kind:"definition", deps:[] },
+    { id:"troprules", code:"2.A", section:"2", title:"Tropicalization rules", description:"Finite maxima, rational factors, products, and quotients obey the formalized tropicalization rules.", path:"../NthTropicalNevanlinna/Function/Tropicalization.lean", kind:"result", deps:["trop"] },
+    { id:"mero", code:"2.1", section:"2", title:"n-th tropical meromorphic functions", description:"Continuous locally finite piecewise-polynomial functions of exact order n.", path:"../NthTropicalNevanlinna/Function/PiecewisePolynomial.lean", kind:"definition", deps:[] },
+    { id:"mult", code:"2.2", section:"2", title:"Multiplicities, roots, poles, and entire functions", description:"Intrinsic signed one-sided jets define roots, poles, and their multiplicities.", path:"../NthTropicalNevanlinna/Function/Multiplicity.lean", kind:"definition", deps:["mero"] },
+    { id:"p22", code:"P2.2", section:"2", title:"Endpoint mean inequality", description:"Entire functions satisfy the centered endpoint inequality, with equality in the nowhere-vanishing case.", path:"../NthTropicalNevanlinna/Function/EntireMean.lean", kind:"result", deps:["mult"] },
+    { id:"p23", code:"P2.3", section:"2", title:"Entire quotient decomposition", description:"Every meromorphic function is a difference of entire functions without common roots or poles.", path:"../NthTropicalNevanlinna/Function/Decomposition.lean", kind:"result", deps:["mult"] },
+
+    { id:"l31", code:"L3.1", section:"3", title:"Finite telescoping", description:"Endpoint identities on arbitrary bounded intervals, expressed through genuine derivative jumps.", path:"../NthTropicalNevanlinna/PoissonJensen/IntrinsicTelescoping.lean", kind:"result", deps:["mero","mult"] },
+    { id:"kernels", code:"3.A", section:"3", title:"Poisson-Jensen kernels", description:"The symmetric kernels B_k, D_k, and E used in the coefficient reduction.", path:"../NthTropicalNevanlinna/PoissonJensen/Kernels.lean", kind:"definition", deps:[] },
+    { id:"regions", code:"3.B", section:"3", title:"Nine regions and auxiliary jumps", description:"The regions F_1,...,F_9 classify the auxiliary multiplicity expressions.", path:"../NthTropicalNevanlinna/PoissonJensen/AuxiliaryJumps.lean", kind:"definition", deps:["mult"] },
+    { id:"l32", code:"L3.2", section:"3", title:"Nine-region reduction", description:"Auxiliary jumps reduce to intrinsic multiplicities in all nine regions.", path:"../NthTropicalNevanlinna/PoissonJensen/AuxiliaryJumps.lean", kind:"result", deps:["regions"] },
+    { id:"t33", code:"T3.3", section:"3", title:"Poisson-Jensen formula", description:"Endpoint jets and all root and pole contributions combine into the n-th tropical Poisson-Jensen identity.", path:"../NthTropicalNevanlinna/PoissonJensen/Main.lean", kind:"result", deps:["l31","kernels","l32"] },
+    { id:"counts", code:"3.C", section:"3", title:"Counting and characteristic functions", description:"Proximity, partial and integrated counts, characteristic, order, and hyper-order.", path:"../NthTropicalNevanlinna/Nevanlinna/Counting.lean", kind:"definition", deps:["mult"] },
+    { id:"t35", code:"T3.5", section:"3", title:"Jensen identity", description:"The characteristic satisfies T(r,f) = T(r,-f) + f(0).", path:"../NthTropicalNevanlinna/Nevanlinna/Jensen.lean", kind:"result", deps:["t33","counts"] },
+    { id:"growth", code:"3.6", section:"3", title:"Order and hyper-order", description:"Growth invariants defined by EReal-valued limsup expressions.", path:"../NthTropicalNevanlinna/Nevanlinna/Growth.lean", kind:"definition", deps:["counts"] },
+    { id:"hyperexp", code:"3.7", section:"3", title:"Tropical hyper-exponentials", description:"The first-order and generalized tropical hyper-exponential families.", path:"../NthTropicalNevanlinna/Nevanlinna/Examples.lean", kind:"definition", deps:[] },
+    { id:"p38", code:"P3.8", section:"3", title:"Hyper-exponential growth", description:"The generalized hyper-exponential is entire, nondecreasing, and has hyper-order one.", path:"../NthTropicalNevanlinna/Nevanlinna/Examples.lean", kind:"result", deps:["counts","growth","hyperexp"] },
+
+    { id:"d42", code:"D4.2", section:"4", title:"Well-defined polynomial pieces", description:"Polynomial pieces obey the common parity and coefficient-sign condition.", path:"../NthTropicalNevanlinna/LogDerivative/WellDefined.lean", kind:"definition", deps:["mero"] },
+    { id:"l43", code:"L4.3", section:"4", title:"Radial derivative signs", description:"All positive-order radial derivatives have one common weak sign.", path:"../NthTropicalNevanlinna/LogDerivative/WellDefined.lean", kind:"result", deps:["d42"] },
+    { id:"l44", code:"L4.4", section:"4", title:"Characteristic monotonicity", description:"The characteristic is nonnegative, nondecreasing, and convex.", path:"../NthTropicalNevanlinna/LogDerivative/CharacteristicMonotonicity.lean", kind:"result", deps:["l43","counts"] },
+    { id:"l45", code:"L4.5", section:"4", title:"Pointwise shift estimate", description:"A finite-radius shift is bounded explicitly by characteristic data.", path:"../NthTropicalNevanlinna/LogDerivative/ShiftEstimate.lean", kind:"result", deps:["l31","t35","l44"] },
+    { id:"l46", code:"L4.6", section:"4", title:"Growth shift", description:"A hyper-order bound produces a finite logarithmic-measure exceptional set.", path:"../NthTropicalNevanlinna/LogDerivative/GrowthShiftProof.lean", kind:"result", deps:["growth"] },
+    { id:"t47", code:"T4.7", section:"4", title:"Pointwise logarithmic derivative", description:"Both radial shift estimates hold outside one exceptional set.", path:"../NthTropicalNevanlinna/LogDerivative/Main.lean", kind:"result", deps:["l45","l46"] },
+    { id:"c48", code:"C4.8", section:"4", title:"Logarithmic derivative lemma", description:"The pointwise estimate yields the proximity form.", path:"../NthTropicalNevanlinna/LogDerivative/Main.lean", kind:"result", deps:["t47"] },
+
+    { id:"curve", code:"5.1", section:"5", title:"Tropical holomorphic curves", description:"Reduced representations and the Cartan characteristic T_f.", path:"../NthTropicalNevanlinna/Curves/Basic.lean", kind:"definition", deps:["mero","mult"] },
+    { id:"p524", code:"P5.2-5.4", section:"5", title:"Curve characteristic identities", description:"Representation invariance, the projective-pair identity, and coordinate quotient bounds.", path:"../NthTropicalNevanlinna/Curves/Characteristic.lean", kind:"result", deps:["curve","p22","t35"] },
+    { id:"hompoly", code:"5.2", section:"5", title:"Homogeneous tropical polynomials", description:"Finite-support homogeneous polynomials, composition, and degree bounds.", path:"../NthTropicalNevanlinna/Curves/HomogeneousPolynomial.lean", kind:"definition", deps:["curve"] },
+    { id:"t56", code:"T5.6", section:"5", title:"Tropical polynomial second main theorem", description:"Signed counting and polynomial degree bounds give the characteristic identity.", path:"../NthTropicalNevanlinna/Curves/SecondMain.lean", kind:"result", deps:["t35","curve","hompoly"] },
+    { id:"c57", code:"C5.7", section:"5", title:"First-order Fermat case", description:"The second main theorem specializes to an entire tropical Fermat composition.", path:"../NthTropicalNevanlinna/Curves/SecondMain.lean", kind:"result", deps:["t56"] },
+    { id:"t58", code:"T5.8", section:"5", title:"Ordinary Fermat estimate", description:"Endpoint growth and multiplicity algebra give the two-sided ordinary-power estimate.", path:"../NthTropicalNevanlinna/Curves/Fermat.lean", kind:"result", deps:["curve","counts"] },
+    { id:"e5910", code:"E5.9-5.10", section:"5", title:"Sharpness examples", description:"Concrete curves test the growth hypothesis and attain the constants in Theorem 5.8.", path:"../NthTropicalNevanlinna/Curves/FermatExamples.lean", kind:"result", deps:["t58"] },
+
+    { id:"casor", code:"6.0", section:"6", title:"Shifts and tropical Casoratian", description:"Forward shifts, partial counts, and the permutation supremum.", path:"../NthTropicalNevanlinna/Truncated/Casoratian.lean", kind:"definition", deps:["counts"] },
+    { id:"finite", code:"6.A", section:"6", title:"Finite-root identity", description:"Eventual affine counting identities imply first-order asymptotic equivalence.", path:"../NthTropicalNevanlinna/Truncated/FiniteRoots.lean", kind:"result", deps:["t35","casor"] },
+    { id:"l61", code:"L6.1", section:"6", title:"Casoratian common factor", description:"A common tropical factor separates by permutation reindexing.", path:"../NthTropicalNevanlinna/Truncated/Casoratian.lean", kind:"result", deps:["casor"] },
+    { id:"shiftcount", code:"6.B", section:"6", title:"Shift-counting comparison", description:"Odd-order transport is exact; even orders carry a finite central correction.", path:"../NthTropicalNevanlinna/Truncated/ShiftCounting.lean", kind:"result", deps:["mult","counts"] },
+    { id:"t62", code:"T6.2", section:"6", title:"Truncated second main theorem", description:"Counting comparison, Casoratian factorization, logarithmic differences, and curve bounds assemble the truncated relation.", path:"../NthTropicalNevanlinna/Truncated/Main.lean", kind:"result", deps:["t35","c48","p524","l61","shiftcount"] },
+    { id:"c63", code:"C6.3", section:"6", title:"First-order truncated relation", description:"At first order the higher-order correction terms disappear.", path:"../NthTropicalNevanlinna/Truncated/Main.lean", kind:"result", deps:["t62"] }
+  ];
+
+  const byId = new Map(nodes.map(node => [node.id, node]));
+  const dag = document.getElementById("dag");
+  const levelsElement = document.getElementById("dag-levels");
+  const dagSvg = document.getElementById("dag-svg");
+  const edgeLayer = document.getElementById("dag-edge-layer");
+  const detailTitle = document.getElementById("detail-title");
+  const detailSource = document.getElementById("detail-source");
+  const detailDescription = document.getElementById("detail-description");
+  const detailInputs = document.getElementById("detail-inputs");
+  const detailOutputs = document.getElementById("detail-outputs");
+  let selectedId = null;
+
+  const outputsOf = id => nodes.filter(node => node.deps.includes(id)).map(node => node.id);
+  const displayName = id => `${byId.get(id).code} ${byId.get(id).title}`;
+
+  const setList = (element, ids, emptyText) => {
+    element.replaceChildren();
+    if (ids.length === 0) {
+      const item = document.createElement("li");
+      item.textContent = emptyText;
+      element.appendChild(item);
+      return;
+    }
+    ids.forEach(id => {
+      const item = document.createElement("li");
+      item.textContent = displayName(id);
+      element.appendChild(item);
+    });
+  };
+
+  const updateDetail = id => {
+    const node = byId.get(id);
+    detailTitle.textContent = `${node.code} ${node.title}`;
+    detailSource.href = node.path;
+    detailSource.textContent = node.path.replace("../NthTropicalNevanlinna/", "");
+    detailDescription.textContent = node.description;
+    setList(detailInputs, node.deps, "No prerequisite in this graph");
+    setList(detailOutputs, outputsOf(id), "No direct consequence in this graph");
+  };
+
+  const clearSelection = () => {
+    selectedId = null;
+    levelsElement.querySelectorAll(".node").forEach(node => {
+      node.classList.remove("is-selected", "is-related", "is-dim");
+      node.setAttribute("aria-pressed", "false");
+    });
+    edgeLayer.querySelectorAll(".dep-edge").forEach(edge => edge.classList.remove("is-active", "is-dim"));
+  };
+
+  const selectNode = id => {
+    if (selectedId === id) {
+      clearSelection();
+      return;
+    }
+    selectedId = id;
+    const node = byId.get(id);
+    const related = new Set([id, ...node.deps, ...outputsOf(id)]);
+    levelsElement.querySelectorAll(".node").forEach(element => {
+      const nodeId = element.dataset.id;
+      element.classList.toggle("is-selected", nodeId === id);
+      element.classList.toggle("is-related", related.has(nodeId) && nodeId !== id);
+      element.classList.toggle("is-dim", !related.has(nodeId));
+      element.setAttribute("aria-pressed", String(nodeId === id));
+    });
+    edgeLayer.querySelectorAll(".dep-edge").forEach(edge => {
+      const active = edge.dataset.source === id || edge.dataset.target === id;
+      edge.classList.toggle("is-active", active);
+      edge.classList.toggle("is-dim", !active);
+    });
+    updateDetail(id);
+  };
+
+  const computeLevels = () => {
+    const memo = new Map();
+    const visit = (id, stack = new Set()) => {
+      if (memo.has(id)) return memo.get(id);
+      if (stack.has(id)) return 0;
+      const node = byId.get(id);
+      const nextStack = new Set(stack).add(id);
+      const level = node.deps.length === 0 ? 0 : 1 + Math.max(...node.deps.map(dep => visit(dep, nextStack)));
+      memo.set(id, level);
+      return level;
+    };
+    return new Map(nodes.map(node => [node.id, visit(node.id)]));
+  };
+
+  const drawEdges = () => {
+    edgeLayer.replaceChildren();
+    const board = dag.getBoundingClientRect();
+    const width = dag.clientWidth;
+    const height = dag.clientHeight;
+    dagSvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    dagSvg.setAttribute("width", String(width));
+    dagSvg.setAttribute("height", String(height));
+    nodes.forEach(target => target.deps.forEach(sourceId => {
+      const sourceNode = levelsElement.querySelector(`[data-id="${sourceId}"]`);
+      const targetNode = levelsElement.querySelector(`[data-id="${target.id}"]`);
+      if (!sourceNode || !targetNode) return;
+      const source = sourceNode.getBoundingClientRect();
+      const targetBox = targetNode.getBoundingClientRect();
+      const sx = source.left - board.left + source.width / 2;
+      const sy = source.bottom - board.top;
+      const tx = targetBox.left - board.left + targetBox.width / 2;
+      const ty = targetBox.top - board.top;
+      const bend = Math.max(24, (ty - sy) * .5);
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("class", "dep-edge");
+      path.setAttribute("d", `M ${sx} ${sy} C ${sx} ${sy + bend}, ${tx} ${ty - bend}, ${tx} ${ty}`);
+      path.dataset.source = sourceId;
+      path.dataset.target = target.id;
+      edgeLayer.appendChild(path);
+    }));
+  };
+
+  const render = () => {
+    const levels = computeLevels();
+    const maxLevel = Math.max(...levels.values());
+    if (levelsElement.children.length === 0) {
+      for (let level = 0; level <= maxLevel; level += 1) {
+        const row = document.createElement("div");
+        row.className = "dag-level";
+        nodes.filter(node => levels.get(node.id) === level).forEach(node => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "node";
+          button.dataset.id = node.id;
+          button.dataset.kind = node.kind;
+          button.dataset.section = node.section;
+          button.setAttribute("aria-pressed", "false");
+          button.setAttribute("aria-label", `${node.code}: ${node.title}`);
+          button.innerHTML = `<span class="node-meta"><span class="node-code">${node.code}</span><span class="node-section">Section ${node.section}</span></span><span class="node-title">${node.title}</span><span class="node-kind">${node.kind === "definition" ? "Definition" : "Result"}</span>`;
+          row.appendChild(button);
+        });
+        levelsElement.appendChild(row);
+      }
+    }
+    levelsElement.querySelectorAll(".node").forEach(button =>
+      button.addEventListener("click", () => selectNode(button.dataset.id)));
+    updateDetail("t62");
+    requestAnimationFrame(() => requestAnimationFrame(drawEdges));
+  };
+
+  window.addEventListener("resize", () => requestAnimationFrame(drawEdges));
+  render();
+})();
+</script>
+</body>
+</html>

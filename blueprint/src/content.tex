@@ -1,0 +1,1569 @@
+% Shared mathematical content for the printable and searchable blueprints.
+% Statements and mathematical proofs follow the source paper; Lean links and
+% formalization maps record the verified implementation.
+
+\begin{abstract}
+Definitions, statements, and proofs follow the source paper in order.
+Each formalized item links to its verified Lean declaration; the compact
+formalization map beneath it identifies the implementation file.
+\end{abstract}
+
+\setcounter{section}{1}
+\section{Functions and multiplicities}
+
+Throughout, $n\in\N$ means $n\geq1$.  The max-plus operations are
+\[
+  a\oplusT b=\max\{a,b\},\qquad
+  a\otimesT b=a+b,\qquad
+  a\oslashT b=a-b.
+\]
+\begin{definition}[Tropicalization]
+\paperlabel{def:nth-tropicalization}
+\lean{NthTropicalNevanlinna.NthTropicalizesTo}
+\leanok
+For a positive family $q(X,\varepsilon)$ and $n\geq1$, write
+\[
+ q\xrightarrow[n]{\mathrm{trop}}Q
+ \quad\Longleftrightarrow\quad
+ \lim_{\varepsilon\to0^+}\varepsilon^n\log q(X,\varepsilon)=Q(X)
+ \quad\text{for every }X\in\R.
+\]
+For finite nonempty supports $I,J$, degrees $u_i,v_j$, and real
+coefficients $A_i,B_j$, the dequantized rational factor is
+\[
+ R_\varepsilon(X)=
+ \frac{\sum_{i\in I}\exp((u_iX+A_i)/\varepsilon)}
+      {\sum_{j\in J}\exp((v_jX+B_j)/\varepsilon)}.
+\]
+Its first tropicalization is
+\[
+ R(X)=\max_{i\in I}(u_iX+A_i)-\max_{j\in J}(v_jX+B_j).
+\]
+An active product of $n$ such factors, with the source parameter scaled so
+that the logarithm is multiplied by $\varepsilon^n$, is the paper's
+$n$-th tropical source.
+\end{definition}
+
+\begin{proposition}[Formalized tropicalization rules]
+\paperlabel{prop:tropicalization-rules}
+\lean{NthTropicalNevanlinna.activeDequantizedNthTropicalSource_tropicalizesTo,NthTropicalNevanlinna.nthTropicalizesTo_add,NthTropicalNevanlinna.nthTropicalizesTo_mul,NthTropicalNevanlinna.nthTropicalizesTo_div}
+\leanok
+\uses{def:nth-tropicalization}
+Finite log-sum-exp tropicalizes to maximum.  Rational numerator/denominator
+tropicalizes to the difference of their maxima, an active product of $n$
+factors tropicalizes to the sum of the factor limits, and tropicalizable
+positive families satisfy
+\[
+ f+g\mapsto F\oplusT G,\qquad fg\mapsto F\otimesT G,
+ \qquad f/g\mapsto F\oslashT G.
+\]
+\end{proposition}
+
+\begin{proof}
+\leanok
+If $M=\max_i a_i$, then
+\[
+ M\leq\varepsilon\log\sum_i e^{a_i/\varepsilon}
+ \leq M+\varepsilon\log|I|,
+\]
+so the squeeze theorem gives the finite log-sum-exp limit.  Apply this once
+to the numerator and once to the denominator and subtract.  Logarithms turn a
+finite product into a finite sum, so the $n$ active factor limits add.  For
+addition, factor out the larger positive summand; the remaining correction is
+between $0$ and $\varepsilon^n\log2$ and therefore vanishes.  The product and
+quotient identities follow directly from $\log(fg)=\log f+\log g$ and
+$\log(f/g)=\log f-\log g$.
+\end{proof}
+
+\begin{definition}[$n$-th tropical meromorphic functions]
+\paperlabel{def:nth-meromorphic}
+\lean{NthTropicalNevanlinna.PolynomialPresentation,NthTropicalNevanlinna.IsNthTropicalMeromorphicFunction,NthTropicalNevanlinna.NthTropicalMeromorphicFunction}
+\leanok
+An \emph{$n$-th tropical meromorphic function} is a continuous function
+$f:\R\to\R$ admitting a locally finite, bi-infinite increasing mesh
+$(x_i)_{i\in\mathbb Z}$ and polynomial pieces $p_i$ such that
+\[
+ f(x)=p_i(x)\quad(x\in[x_{i-1},x_i]),\qquad
+ \deg p_i\leq n,
+\]
+and at least one piece has degree $n$.  The mesh is auxiliary; its redundant
+cut points are not singularities.
+\end{definition}
+
+\begin{leanproof}
+\leanfile{PolynomialPresentation}, \leanfile{IsNthTropicalMeromorphicFunction}, and
+\leanfile{NthTropicalMeromorphicFunction} in
+\leanfile{Function/PiecewisePolynomial.lean}.  Intrinsic one-sided germs make all
+later multiplicities independent of the chosen presentation.
+\end{leanproof}
+
+\begin{definition}[Normalized jets and jet matrix]
+\paperlabel{def:normalized-jets}
+\lean{NthTropicalNevanlinna.normalizedPolynomialJet}
+\leanok
+For a polynomial $p(X)=\sum_{k=0}^na_kX^k$, its normalized $j$-jet at
+$x_0$ is
+\[
+ J_j(p,x_0)=\frac{p^{(j)}(x_0)}{j!}
+ =\sum_{k=j}^n\binom{k}{j}a_kx_0^{k-j}.
+\]
+Writing $J(p,x_0)=(J_1,\ldots,J_n)^T$ and
+$a=(a_1,\ldots,a_n)^T$ gives $J(p,x_0)=\mathcal C_n(x_0)a$, where
+$\mathcal C_n(x_0)$ is upper triangular with diagonal entries $1$ and hence
+is invertible.  Multiplying its $j$-th row by the appropriate one-sided factor
+$\operatorname{sgn}^{j+1}(x_0^\pm)$ gives the signed jet matrix
+$\mathcal D_n(x_0^\pm)$ used to recover prescribed multiplicities.
+\end{definition}
+
+\begin{definition}[$j$-th roots, poles, and entire functions]
+\paperlabel{def:multiplicity}
+\lean{NthTropicalNevanlinna.multiplicity,NthTropicalNevanlinna.IsJthRoot,NthTropicalNevanlinna.IsJthPole,NthTropicalNevanlinna.IsTropicalEntire,NthTropicalNevanlinna.IsTropicalNowhereVanishingEntire}
+\leanok
+\uses{def:nth-meromorphic,def:normalized-jets}
+For $1\leq j\leq n$, define
+\[
+ \omega_f^{(j)}(x)=
+ \frac{\operatorname{sgn}^{j+1}(x^+)f^{(j)}(x^+)
+ -\operatorname{sgn}^{j+1}(x^-)f^{(j)}(x^-)}{j!},
+ \qquad \operatorname{sgn}(0^\pm)=\pm1.
+\]
+The point $x$ is a $j$-th root if $\omega_f^{(j)}(x)>0$, and a $j$-th
+pole if $\omega_f^{(j)}(x)<0$; its multiplicity is
+$|\omega_f^{(j)}(x)|$.  The function is \emph{tropical entire} if it has no
+poles of any order, and \emph{nowhere-vanishing entire} if it has neither
+roots nor poles.
+\end{definition}
+
+\begin{example}[2.1 --- Closure failures]
+\paperlabel{ex:2.1}
+\lean{NthTropicalNevanlinna.example_2_1_counterexamples}
+\leanok
+\uses{def:multiplicity}
+Let $f(x)=\operatorname{sgn}(x)x^2$ and $g(x)=x$.  Both are second-order
+tropical entire, but $f\oplusT g$ has a second-order pole of multiplicity
+$1$ at $0$, and $f(x+1)$ has a second-order pole of multiplicity $2$ at
+$-1$.  Thus translation and max need not preserve higher-order entirety.
+\end{example}
+
+\begin{proof}
+\leanok
+On the two sides of $0$, the maximum $f\oplusT g$ is respectively $-x^2$
+and $x$ near the origin.  Substitution into the signed second-jet definition
+gives $\omega^{(2)}(0)=-1$.  The translated function has its unique germ
+change at $-1$; its two second derivatives have signed jump
+$\omega^{(2)}(-1)=-2$.  Both are therefore genuine second-order poles with
+the stated multiplicities.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{example_2_1_counterexamples} in \leanfile{Counterexamples.lean}.
+\end{leanproof}
+
+\begin{proposition}[2.2 --- Endpoint mean inequality]
+\paperlabel{prop:2.2}
+\lean{NthTropicalNevanlinna.entire_midpoint_le_endpointMean,NthTropicalNevanlinna.nowhereVanishingEntire_endpointMean_eq}
+\leanok
+\uses{def:multiplicity}
+If $f$ is $n$-th tropical entire, then for every $r>0$,
+\[
+                    f(0)\leq\frac{f(r)+f(-r)}2.
+\]
+If $f$ is nowhere-vanishing entire, equality holds.
+\end{proposition}
+
+\begin{proof}
+\leanok
+Taylor-expand the polynomial pieces from $0$ to $r$ and from $0$ to $-r$.
+Adjacent polynomial values cancel, leaving the central polynomial jets and
+the weighted sums
+$\omega_f^{(j)}(x)(r-|x|)^j$.  Every such term is nonnegative for an entire
+function.  If there are no roots either, every jump vanishes, so the two
+endpoint expansions add to $2f(0)$.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{entire_midpoint_le_endpointMean} and
+\leanfile{nowhereVanishingEntire_endpointMean_eq} in
+\leanfile{Function/EntireMean.lean}.
+\end{leanproof}
+
+\begin{example}[Counterexample to the converse of 2.2]
+\paperlabel{ex:prop2.2-converse}
+\lean{NthTropicalNevanlinna.proposition22_converse_is_false}
+\leanok
+\uses{prop:2.2}
+Define $q(x)=0$ for $|x|\leq1$, $q(x)=-x+1$ for $x>1$, and
+$q(x)=-x-1$ for $x<-1$.  Then
+$q(r)+q(-r)=2q(0)$ for every $r>0$, but $x=1$ is a genuine first-order
+pole.  Thus the endpoint equality does not characterize tropical entirety.
+\end{example}
+
+\begin{proof}
+\leanok
+The two tails are negatives of one another and the middle interval is zero,
+which gives the endpoint equality directly.  At $x=1$ the slope changes from
+$0$ to $-1$, hence $\omega_q^{(1)}(1)=-1<0$.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{proposition22_converse_is_false} in \leanfile{Counterexamples.lean}.
+\end{leanproof}
+
+\begin{proposition}[2.3 --- Entire quotient decomposition]
+\paperlabel{prop:2.3}
+\lean{NthTropicalNevanlinna.exists_entire_quotient_decomposition}
+\leanok
+\uses{def:nth-meromorphic,def:multiplicity}
+Every $n$-th tropical meromorphic function $f$ can be written
+$f=h\oslashT g=h-g$, where $g$ and $h$ are tropical entire, their orders
+$n_1,n_2$ satisfy $\max\{n_1,n_2\}=n$, and they have no common $j$-th root
+for $1\leq j\leq n$.
+\end{proposition}
+
+\begin{proof}
+\leanok
+At each genuine singularity prescribe the jump of $g$ to be the positive part
+of $-\omega_f$ and put $h=f+g$.  Then
+$\omega_g^{(j)}=\max\{-\omega_f^{(j)},0\}$ and
+$\omega_h^{(j)}=\max\{\omega_f^{(j)},0\}$.  Polynomial-jet inversion and
+continuous spline assembly realize these prescribed jumps globally.  Hence
+both functions are entire, have disjoint root data, and $h-g=f$.  Exact
+ambient order follows because cancellation of every degree-$n$ coefficient in
+both $g$ and $h$ would force the degree-$n$ coefficient of $f$ to vanish.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{exists_entire_quotient_decomposition} in
+\leanfile{Function/Decomposition.lean}; jet inversion and assembly are
+encapsulated in \leanfile{PolynomialJet.lean} and \leanfile{SplineAssembly.lean}.
+\end{leanproof}
+
+\section{Poisson--Jensen and growth}
+
+Put
+\[
+ \tau_f^{(j)}(a)=\frac{f^{(j)}(a^+)-f^{(j)}(a^-)}{j!}.
+\]
+
+\begin{lemma}[3.1 --- Finite telescoping]
+\paperlabel{lem:3.1}
+\lean{NthTropicalNevanlinna.endpoint_sub_eq_intrinsic_singularity_sum_of_pos,NthTropicalNevanlinna.sub_leftEndpoint_eq_intrinsic_singularity_sum_of_neg}
+\leanok
+\uses{def:nth-meromorphic,def:normalized-jets}
+Let $f$ be piecewise polynomial of degree at most $n$ on $[-r,r]$, and
+$x\in(-r,r)$.  If $x_1<\cdots<x_\nu$ are the genuine derivative-jump points
+in $(x,r)$ and $x_{-\mu}<\cdots<x_{-1}$ those in $(-r,x)$, then
+\begin{align*}
+ f(r)-f(x)
+ &=\sum_{j=1}^n\left[
+   \frac{f^{(j)}(x^+)}{j!}(r-x)^j
+   +\sum_{i=1}^\nu\tau_f^{(j)}(x_i)(r-x_i)^j\right],\\
+ f(x)-f(-r)
+ &=\sum_{j=1}^n\left[
+   (-1)^{j+1}\frac{f^{(j)}(x^-)}{j!}(r+x)^j
+   +(-1)^j\sum_{i=1}^\mu\tau_f^{(j)}(x_{-i})(r+x_{-i})^j\right].
+\end{align*}
+\end{lemma}
+
+\begin{proof}
+\leanok
+Taylor-expand each polynomial piece at its left endpoint.  Add the increments
+along the mesh.  Continuity cancels the zeroth-order terms, and exchanging the
+two finite sums collects the jump in each normalized derivative.  The left
+formula follows identically after reversing orientation, producing the powers
+of $-1$.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{endpoint_sub_eq_jet_sum}, \leanfile{sub_leftEndpoint_eq_jet_sum}, and their
+genuine-singularity wrappers in \leanfile{PoissonJensen/Telescoping.lean} and
+\leanfile{PoissonJensen/IntrinsicTelescoping.lean}.
+\end{leanproof}
+
+\begin{definition}[Poisson--Jensen kernels]
+\paperlabel{def:pj-kernels}
+\lean{NthTropicalNevanlinna.symmetricKernel,NthTropicalNevanlinna.antisymmetricKernel,NthTropicalNevanlinna.interactionKernel}
+\leanok
+For $r>0$, $|x|<r$, and $k\geq0$, define
+\[
+ B_k(r,x)=\frac{(r+x)^k+(r-x)^k}{2},\qquad
+ D_k(r,x)=\frac{(r+x)^k-(r-x)^k}{2},
+\]
+and for $|y|<r$ define
+\[
+ E(r,x,y)=r^2-|x-y|r-xy
+ =\begin{cases}(r-y)(r+x),&x\leq y,\\
+                 (r+y)(r-x),&y\leq x.
+   \end{cases}
+\]
+Thus $B_k\pm D_k=(r\pm x)^k$, $D_k(r,0)=0$, and
+$E(r,0,y)=r(r-|y|)$.
+\end{definition}
+
+\begin{definition}[Nine-region partition]
+\paperlabel{def:pj-regions}
+\lean{NthTropicalNevanlinna.RelativeRegion,NthTropicalNevanlinna.InRelativeRegion}
+\leanok
+For fixed $r>0$ and $|x|<r$, let
+\begin{align*}
+F_1&=\{y:-r<y<\min(0,x)\},&
+F_2&=\{y:\max(0,x)<y<r\},\\
+F_3&=\{y:y=x=0\},&
+F_4&=\{y:0<y<x\},\\
+F_5&=\{y:x<y<0\},&
+F_6&=\{y:x<y=0\},\\
+F_7&=\{y:y=0<x\},&
+F_8&=\{y:0<y=x\},\\
+F_9&=\{y:y=x<0\}.&&
+\end{align*}
+They are disjoint and cover $(-r,r)$; some are empty for a fixed $x$.
+\end{definition}
+
+\begin{definition}[Auxiliary jumps]
+\paperlabel{def:auxiliary-jumps}
+\lean{NthTropicalNevanlinna.auxiliaryOmega,NthTropicalNevanlinna.auxiliaryGamma}
+\leanok
+\uses{def:multiplicity}
+For $1\leq j\leq n$ define
+\begin{align*}
+\Omega_f^{(j)}(x,y)
+ &=\frac{\operatorname{sgn}^{j+1}((y-x)^+)f^{(j)}(y^+)
+ -\operatorname{sgn}^{j+1}((y-x)^-)f^{(j)}(y^-)}{j!},\\
+\Gamma_f^{(j)}(x,y)
+ &=\frac{\operatorname{sgn}^{j}((y-x)^+)f^{(j)}(y^+)
+ -\operatorname{sgn}^{j}((y-x)^-)f^{(j)}(y^-)}{j!}.
+\end{align*}
+In particular $\Omega_f^{(j)}(0,y)=\omega_f^{(j)}(y)$.
+\end{definition}
+
+\begin{lemma}[3.2 --- Nine-region reduction]
+\paperlabel{lem:3.2}
+\lean{NthTropicalNevanlinna.auxiliaryJump_eq_byRegion}
+\leanok
+\uses{def:pj-regions,def:auxiliary-jumps}
+For $y\in F_\ell$, write $L_j(y)=f^{(j)}(y^-)/j!$.  Then
+\[
+\Omega_f^{(j)}(x,y)=A_{\ell,j}\omega_f^{(j)}(y)
+                    +A'_{\ell,j}L_j(y),\qquad
+\Gamma_f^{(j)}(x,y)=C_{\ell,j}\omega_f^{(j)}(y)
+                    +C'_{\ell,j}L_j(y),
+\]
+where
+\scriptsize
+\[
+\begin{array}{c|ccccccccc}
+\ell&1&2&3&4&5&6&7&8&9\\ \hline
+A_{\ell,j}&1&1&1&(-1)^{j+1}&(-1)^{j+1}&1&(-1)^{j+1}&1&(-1)^{j+1}\\
+A'_{\ell,j}&0&0&0&0&0&(-1)^{j+1}-1&1-(-1)^{j+1}&1-(-1)^{j+1}&1-(-1)^{j+1}\\
+C_{\ell,j}&-1&1&1&(-1)^j&(-1)^{j+1}&1&(-1)^j&1&(-1)^{j+1}\\
+C'_{\ell,j}&0&0&2(-1)^{j+1}&0&0&(-1)^{j+1}-1&(-1)^{j+1}-1&1-(-1)^j&1-(-1)^j
+\end{array}
+\]
+\normalsize
+\end{lemma}
+
+\begin{proof}
+\leanok
+Put $u=f^{(j)}(y^+)/j!$, $v=f^{(j)}(y^-)/j!$, and
+$\varepsilon=(-1)^{j+1}$.  The multiplicity definition gives
+\[
+\omega_f^{(j)}(y)=
+\begin{cases}u-v,&y>0,\\
+\varepsilon(u-v),&y<0,\\
+u-\varepsilon v,&y=0.
+\end{cases}
+\]
+The sign of $y-x$ similarly gives
+\[
+\Omega_f^{(j)}(x,y)=
+\begin{cases}u-v,&y>x,\\
+\varepsilon(u-v),&y<x,\\
+u-\varepsilon v,&y=x,
+\end{cases}
+\]
+while $\Gamma$ is obtained from the same three rows after replacing the
+right-side exponent $j+1$ by $j$.  Each region fixes both the sign of $y$ and
+the comparison of $y$ with $x$.  Solving the first display for $u-v$ and
+substituting into the second gives the four coefficients in the table.  The
+cases $F_6,F_7,F_8,F_9$ retain a multiple of $v$ because either $y=0$ or
+$y=x$; in all other cases that correction is zero.  Direct substitution for
+the nine disjoint regions yields every table entry.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{auxiliaryJump_eq_byRegion} in
+\leanfile{PoissonJensen/AuxiliaryJumps.lean}.  The definitions $B_k,D_k,E$ and the
+nine-region partition remain proof-local in \leanfile{Kernels.lean} and
+\leanfile{RegionPartition.lean}.
+\end{leanproof}
+
+\begin{theorem}[3.3 --- Poisson--Jensen formula]
+\paperlabel{thm:3.3}
+\lean{NthTropicalNevanlinna.poissonJensen,NthTropicalNevanlinna.jensenFormula}
+\leanok
+\uses{lem:3.1,def:pj-kernels,lem:3.2}
+Let $r>0$, $|x|<r$, and let $S$ be the finite set of genuine singularities of
+$f$ in $(-r,r)$.  If $y\in F_\ell$, put
+$A_j(x,y)=A_{\ell,j}$ and $C_j(x,y)=C_{\ell,j}$ from Lemma 3.2.  Let
+$f_{a^-}$ denote the polynomial germ immediately to the left of $a$, extended
+as a polynomial to all real arguments, and let
+$s_-(x)=\operatorname{sgn}(x)$ for $x\neq0$ and $s_-(0)=-1$.  Then
+\begin{align*}
+f(x)={}&\frac{f(r)+f(-r)}2
++\frac{D_n(r,x)}{2B_n(r,x)}\bigl(f(r)-f(-r)\bigr)\\
+&-\sum_{j=1}^n\sum_{y\in S}
+A_j(x,y)\omega_f^{(j)}(y)E(r,x,y)^j
+\frac{B_{n-j}(r,x)}{2B_n(r,x)}\\
+&-\sum_{j=1}^n\sum_{y\in S}
+C_j(x,y)\omega_f^{(j)}(y)E(r,x,y)^j
+\frac{D_{n-j}(r,x)}{2B_n(r,x)}\\
+&-\frac{(r+x)^n}{2B_n(r,x)}\bigl(f_{x^-}(r)-f(x)\bigr)
+-\frac{(r-x)^n}{2B_n(r,x)}\bigl(f_{x^-}(-r)-f(x)\bigr)\\
+&-s_-(x)\frac{(r-|x|)^n}{2B_n(r,x)}
+ \bigl(f_{0^-}(r)+f_{0^-}(-r)-2f(0)\bigr).
+\end{align*}
+At $x=0$ all $D$-terms and germ corrections cancel, giving
+\[
+ f(0)=\frac{f(r)+f(-r)}2
+ -\frac12\sum_{j=1}^n\sum_{\substack{y:\ j\text{-root}\\|y|<r}}
+    |\omega_f^{(j)}(y)|(r-|y|)^j
+ +\frac12\sum_{j=1}^n\sum_{\substack{z:\ j\text{-pole}\\|z|<r}}
+    |\omega_f^{(j)}(z)|(r-|z|)^j.
+\]
+\end{theorem}
+
+\begin{proof}
+\leanok
+Multiply the two identities of Lemma 3.1 by $(r+x)^n$ and $(r-x)^n$ and
+subtract.  Factor every distance product through $E(r,x,y)$, split symmetric
+and antisymmetric powers into $B_k$ and $D_k$, and use Lemma 3.2 to replace
+auxiliary jumps by intrinsic multiplicities.  Taylor's formula recombines the
+remaining one-sided jets into the two germ corrections.  Division by
+$2B_n(r,x)>0$ yields the general formula.  Substitution $x=0$ leaves the
+signed root/pole sum above.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{poissonJensen} and \leanfile{jensenFormula} in
+\leanfile{PoissonJensen/Main.lean}.  The public theorem constructs the needed
+finite interval presentation from the global function.
+\end{leanproof}
+
+\begin{example}[3.4 --- Multiplicity table]
+\paperlabel{ex:3.4}
+\lean{NthTropicalNevanlinna.example34_complete_multiplicity_table,NthTropicalNevanlinna.example34_jensen_numerical_identity}
+\leanok
+\uses{thm:3.3}
+On $(-3,3)$ let
+\[
+f(x)=\begin{cases}
+-2x^3-17x^2-46x-40,&-3<x\leq-2,\\
+2x^2+6x+4,&-2<x\leq-1,\\
+x^2+2x+1,&-1<x\leq1,\\
+-x+5,&1<x\leq2,\\
+3x^3-15x^2+18x+3,&2<x<3.
+\end{cases}
+\]
+Its nonzero signed multiplicities are
+\[
+\begin{array}{c|rrrrr}
+x&-2&-1&0&1&2\\ \hline
+\omega_f^{(1)}&&-2&&-5&-5\\
+\omega_f^{(2)}&-7&1&2&-1&3\\
+\omega_f^{(3)}&2&&&&3
+\end{array}
+\]
+and for $2<r<3$ the third-order Jensen formula evaluates to $f(0)=1$.
+\end{example}
+
+\begin{proof}
+\leanok
+Differentiate the two polynomial germs at each of
+$-2,-1,0,1,2$, divide the $j$-th derivative jump by $j!$, and insert the
+one-sided sign factors.  This gives exactly the displayed table; blank
+entries are zero.  Separating its positive and negative entries into roots
+and poles and substituting their weights $(r-|x|)^j/2$ into the Jensen formula
+cancels every cubic, quadratic, and linear term, leaving $1=f(0)$.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{example34_complete_multiplicity_table} in
+\leanfile{Counterexamples.lean}.
+\end{leanproof}
+
+\begin{definition}[Nevanlinna quantities]
+\paperlabel{def:nevanlinna-quantities}
+\lean{NthTropicalNevanlinna.proximity,NthTropicalNevanlinna.maxPlusCounting,NthTropicalNevanlinna.integratedCounting,NthTropicalNevanlinna.partialIntegratedCounting,NthTropicalNevanlinna.characteristic,NthTropicalNevanlinna.growthOrder,NthTropicalNevanlinna.hyperOrder,NthTropicalNevanlinna.integratedCounting_eq_paperIteratedIntegral}
+\leanok
+\uses{def:multiplicity}
+For $r>0$ define
+\begin{align*}
+ m(r,f)&=\frac{\max\{f(r),0\}+\max\{f(-r),0\}}2,\\
+ N^{(j)}(r,f)&=\frac12\sum_{\substack{z:\ j\text{-pole}\\|z|<r}}
+ |\omega_f^{(j)}(z)|(r-|z|)^j,\\
+ T(r,f)&=m(r,f)+\sum_{j=1}^nN^{(j)}(r,f).
+\end{align*}
+For a region $A\subseteq\R$, $N_A^{(j)}(r,f)$ is the same finite sum
+restricted to $z\in A$.  If $n^{(j)}(t,f)$ counts $j$-th poles in $(-t,t)$,
+then
+\[
+ N^{(j)}(r,f)=\frac12\int_{[0,r]^j}
+ n^{(j)}\!\left(\min_s t_s,f\right)\,dt_1\cdots dt_j.
+\]
+Finally
+\[
+ \rho(f)=\limsup_{r\to\infty}\frac{\log T(r,f)}{\log r},\qquad
+ \rho_2(f)=\limsup_{r\to\infty}\frac{\log\log T(r,f)}{\log r}.
+\]
+\end{definition}
+
+\begin{proof}[Sum--integral identity]
+\leanok
+Expand the counting function into the finite sum of indicators of boxes
+$[|z|,r]^j$.  Tonelli reduces the integral to a finite sum, and the box
+attached to $z$ has volume $(r-|z|)^j$.
+\end{proof}
+
+\begin{leanproof}
+Definitions \leanfile{proximity}, \leanfile{maxPlusCounting},
+\leanfile{integratedCounting}, \leanfile{partialIntegratedCounting}, and
+\leanfile{characteristic}; the bridge and integral identity are
+\leanfile{countingBoxIntegrand_eq_maxPlusCounting_minimum},
+\leanfile{integratedCounting_eq_iteratedIntegral}, and
+\leanfile{integratedCounting_eq_paperIteratedIntegral} in
+\leanfile{Nevanlinna/Counting.lean}.  Growth invariants are in
+\leanfile{Nevanlinna/Growth.lean}.
+\end{leanproof}
+
+\begin{theorem}[3.5 --- Jensen identity]
+\paperlabel{thm:3.5}
+\lean{NthTropicalNevanlinna.characteristic_eq_neg_add_at_zero}
+\leanok
+\uses{thm:3.3,def:nevanlinna-quantities}
+For every $r>0$,
+\[
+                         T(r,f)=T(r,-f)+f(0).
+\]
+\end{theorem}
+
+\begin{proof}
+\leanok
+Split the signed multiplicity sum in the Jensen formula into positive roots
+and negative poles.  Replacing $f$ by $-f$ exchanges the two sets, while
+$\max(a,0)-\max(-a,0)=a$ converts the endpoint term into
+$(f(r)+f(-r))/2$.  Rearrangement gives the identity.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{characteristic_eq_neg_add_at_zero} in
+\leanfile{Nevanlinna/Jensen.lean}.
+\end{leanproof}
+
+\begin{definition}[3.6--3.7 --- Tropical hyper-exponentials]
+\paperlabel{def:hyper-exponential}
+\lean{NthTropicalNevanlinna.tropicalHyperExponential}
+\leanok
+For $\alpha>1$, the first-order tropical hyper-exponential is
+\[
+e_\alpha(x)=\alpha^{\lfloor x\rfloor}
+\left(x-\lfloor x\rfloor+\frac1{\alpha-1}\right).
+\]
+For $n\geq1$ define
+\begin{align*}
+e_{n,\alpha}(x)={}&
+\operatorname{sgn}^{n+1}(x^+)\alpha^{\lfloor x\rfloor}
+\bigl(x^n-\lfloor x\rfloor^n\bigr)\\
+&+\sum_{i=-\infty}^{\lfloor x\rfloor-1}
+\operatorname{sgn}^{n+1}(i^+)\alpha^i
+\bigl((i+1)^n-i^n\bigr).
+\end{align*}
+The negative infinite tail is interpreted as its absolutely convergent
+geometric-polynomial series.  For $n=1$ this reduces to $e_\alpha$.
+\end{definition}
+
+\begin{proposition}[3.8 --- Hyper-exponential growth]
+\paperlabel{prop:3.8}
+\lean{NthTropicalNevanlinna.proposition_3_8}
+\leanok
+\uses{def:hyper-exponential,def:nevanlinna-quantities}
+For $\alpha>1$, the generalized tropical hyper-exponential $e_{n,\alpha}$ is
+a nonnegative, nondecreasing, $n$-th tropical entire function and
+$\rho_2(e_{n,\alpha})=1$.
+\end{proposition}
+
+\begin{proof}
+\leanok
+Reindex the negative tail by $k=-i$; it is bounded by a finite linear
+combination of series $\sum_{k\geq0}k^q\alpha^{-k}$ and therefore converges
+absolutely.  At an integer $m$, the left polynomial contributes precisely
+the $i=m-1$ term missing from the right tail, so the two one-sided limits
+agree.  On a nonintegral interval the derivative is
+$n\alpha^{\lfloor x\rfloor}|x|^{n-1}\geq0$, proving monotonicity; the limit at
+$-\infty$ and monotonicity give nonnegativity.
+
+At an integer, direct normalized-jet computation gives nonnegative
+$\omega_{e_{n,\alpha}}^{(j)}$ for every $1\leq j\leq n$, while away from the
+integers every multiplicity is zero.  Hence the function is tropical entire.
+For large positive $r$, its endpoint value is bounded above by
+$C(1+r)^n\alpha^r$ and below on a fixed terminal part of each unit interval
+by $c\alpha^{r-1}$.  Jensen and nonnegativity compare these bounds with the
+characteristic.  Taking two logarithms and dividing by $\log r$ squeezes the
+limsup between $1$ and $1$, so $\rho_2(e_{n,\alpha})=1$.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{tropicalHyperExponential} and \leanfile{proposition_3_8} in
+\leanfile{Nevanlinna/Examples.lean}.
+\end{leanproof}
+
+\section{Logarithmic differences}
+
+\begin{example}[4.1 --- Failure of monotonicity and convexity]
+\paperlabel{ex:4.1}
+\lean{NthTropicalNevanlinna.example41_characteristic_not_monotone,NthTropicalNevanlinna.example41_characteristic_not_convex}
+\leanok
+\uses{def:nevanlinna-quantities}
+For every $m\in\N\cup\{0\}$, define
+\[
+ f(x)=\begin{cases}
+ -(x-m)(x-m-1),&m\leq x\leq m+1,\\
+ (x+m)(x+m+1),&-m-1\leq x\leq-m.
+ \end{cases}
+\]
+Then
+\begin{align*}
+ m(r,f)&=-\frac12(r-\lfloor r\rfloor)(r-\lfloor r\rfloor-1),\\
+ \sum_{j=1}^2N^{(j)}(r,f)&=N^{(1)}(r,f)
+   =\frac12\sum_{i=1}^{\lfloor r\rfloor}2(r-i),\\
+ T(r,f)&=-\frac12r^2+\left(2\lfloor r\rfloor+\frac12\right)r
+          -\lfloor r\rfloor(\lfloor r\rfloor+1).
+\end{align*}
+In particular, $T(r,f)$ is neither nondecreasing nor convex.
+\end{example}
+
+\begin{proof}
+\leanok
+On each unit interval the endpoint values give the displayed proximity term.
+The first derivatives jump down by $2$ at every nonzero integer of the
+appropriate sign, while the normalized second jets agree; hence only the
+first-order counting term remains and summing its weights gives the second
+formula.  Their sum is the displayed expression for $T$.  On $0\leq r\leq1$
+it reduces to $(-r^2+r)/2$: it decreases after $r=1/2$ and has second
+derivative $-1$.  Thus it is neither nondecreasing nor convex.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{example41_characteristic_not_monotone} and
+\leanfile{example41_characteristic_not_convex} in \leanfile{Counterexamples.lean}.
+\end{leanproof}
+
+\begin{definition}[4.2 --- Well-defined polynomials]
+\paperlabel{def:4.2}
+\lean{NthTropicalNevanlinna.IsWellDefinedPolynomial,NthTropicalNevanlinna.IsWellDefinedNthTropicalMeromorphicFunction}
+\leanok
+\uses{def:nth-meromorphic}
+A polynomial is \emph{well-defined} if, after subtracting its value at zero,
+it contains only odd powers when its degree is odd or only even powers when
+its degree is even, and all nonzero coefficients have one common weak sign.
+An $n$-th tropical meromorphic function is well-defined when each polynomial
+piece is well-defined.
+\end{definition}
+
+\begin{leanproof}
+\leanfile{IsWellDefinedPolynomial} and
+\leanfile{IsWellDefinedNthTropicalMeromorphicFunction} in
+\leanfile{LogDerivative/WellDefined.lean}.
+\end{leanproof}
+
+\begin{lemma}[4.3 --- Radial derivative signs]
+\paperlabel{lem:4.3}
+\lean{NthTropicalNevanlinna.wellDefinedPolynomial_iteratedDeriv_commonSign}
+\leanok
+\uses{def:4.2}
+Let $p$ be a well-defined polynomial of degree $n$, $\delta\in\{-1,1\}$,
+and $r>0$.  For all $1\leq\ell\leq n$, the derivatives
+$d^\ell p(\delta r)/dr^\ell$ have one common weak sign.
+\end{lemma}
+
+\begin{proof}
+\leanok
+If $n=2m$, then
+\[
+ \frac{d^\ell}{dr^\ell}p(\delta r)=
+ \sum_{2j\geq\ell}a_{2j}\frac{(2j)!}{(2j-\ell)!}r^{2j-\ell}.
+\]
+Every weight is nonnegative, so the sum has the common coefficient sign.  If
+$n=2m-1$, the same calculation gives
+\[
+ \frac{d^\ell}{dr^\ell}p(\delta r)=
+ \delta\sum_{2j-1\geq\ell}a_{2j-1}
+ \frac{(2j-1)!}{(2j-1-\ell)!}r^{2j-1-\ell},
+\]
+whose sign is the coefficient sign multiplied by the fixed $\delta$.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{wellDefinedPolynomial_iteratedDeriv_commonSign} in
+\leanfile{LogDerivative/WellDefined.lean}.
+\end{leanproof}
+
+\begin{definition}[Well-defined $n$-th tropical meromorphic function]
+\paperlabel{def:well-defined-function}
+\lean{NthTropicalNevanlinna.IsWellDefinedNthTropicalMeromorphicFunction}
+\leanok
+\uses{def:4.2}
+Such a function is well-defined when every polynomial germ in one, hence any,
+intrinsic piecewise-polynomial realization is well-defined in Definition 4.2.
+\end{definition}
+
+\begin{lemma}[4.4 --- Characteristic monotonicity]
+\paperlabel{lem:4.4}
+\lean{NthTropicalNevanlinna.characteristicLemma44}
+\leanok
+\uses{lem:4.3,def:nevanlinna-quantities,def:well-defined-function}
+For a well-defined $n$-th tropical meromorphic function $f$, every left radial
+derivative $T^{(\ell)}(r^-,f)$, $0\leq\ell\leq n$, is nonnegative and
+nondecreasing.  In particular $T(\cdot,f)$ is nonnegative, nondecreasing, and
+convex on $(0,\infty)$.
+\end{lemma}
+
+\begin{proof}
+\leanok
+Put $h_\delta(s)=f(\delta s)$.  At an event radius $a>0$, write
+$u_\delta^\pm=h_\delta^{(\ell)}(a^\pm)$ and let $\chi_\delta^\pm$ indicate
+that $h_\delta$ is positive on the corresponding side.  The multiplicity
+definition gives
+\[
+ u_\delta^+-u_\delta^-=\ell!\,\omega_f^{(\ell)}(\delta a).
+\]
+The combined jump of the proximity and pole-counting terms in the
+$\ell$-th derivative is
+\[
+ J_{\delta,\ell}(a)=\frac12\left(
+ \chi_\delta^+u_\delta^+-\chi_\delta^-u_\delta^-
+ +\max\{u_\delta^--u_\delta^+,0\}\right).
+\]
+If $h_\delta(a)>0$, this is
+$\max\{u_\delta^+-u_\delta^-,0\}/2$; if $h_\delta(a)<0$, it is
+$\max\{u_\delta^--u_\delta^+,0\}/2$.  If $h_\delta(a)=0$, Lemma 4.3 gives
+$\chi_\delta^+u_\delta^+\geq0$ and
+$-\chi_\delta^-u_\delta^-\geq0$.  Thus every derivative jump is
+nonnegative.
+
+Near the origin, Taylor expansion gives
+\[
+ T(r,f)=T(0^+,f)+\sum_{j=1}^nc_jr^j,\qquad
+ c_j=\frac{\chi_+a_j+\chi_-b_j+max\{-(a_j+b_j),0\}}{2j!},
+\]
+where $a_j=d^jf(r)/dr^j|_{0^+}$ and
+$b_j=d^jf(-r)/dr^j|_{0^+}$.  If $f(0)$ is positive or negative this reduces
+respectively to the positive or negative part of $a_j+b_j$; if $f(0)=0$,
+Lemma 4.3 controls the two indicated terms separately.  Hence $c_j\geq0$.
+
+Between locally finite event radii, $T$ is a polynomial of degree at most
+$n$.  Its $n$-th derivative is therefore constant there and has only
+nonnegative jumps, so it is nonnegative and nondecreasing.  Descending in
+$\ell$, integrate between events and use the nonnegative jumps and the
+initial coefficients.  This proves the assertion for every $\ell$; the cases
+$\ell=0,1$ give monotonicity and convexity.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{characteristicLemma44} in
+\leanfile{LogDerivative/CharacteristicMonotonicity.lean}.
+\end{leanproof}
+
+\begin{lemma}[4.5 --- Pointwise shift estimate]
+\paperlabel{lem:4.5}
+\lean{NthTropicalNevanlinna.pointwiseShiftEstimate_of_wellDefined}
+\leanok
+\uses{lem:3.1,thm:3.5,lem:4.4}
+If $f$ is well-defined, $\alpha>1$, $c\neq0$, $\delta\in\{-1,1\}$, and
+\[
+ r>\max\left\{2|c|,\frac{3-\alpha}{\alpha-1}|c|\right\},
+\]
+then
+\[
+ |f(\delta r+c)-f(\delta r)|\leq
+ \frac{32|c|}{(\alpha-1)(r+|c|)}
+ \left(T(\alpha(r+|c|),f)+\frac{|f(0)|}{2}\right).
+\]
+\end{lemma}
+
+\begin{proof}
+\leanok
+Set $\rho=(\alpha+1)(r+|c|)/2$.  Apply Lemma 3.1 on the interval from
+$\delta r$ to $\delta r+c$ and again out to $\delta\rho$.  Common-sign jets
+permit the short increments to be bounded by the long increments.  Split
+each singularity contribution into root and pole parts, dominate the partial
+counts by the full counts at $\rho$, and use the Jensen identity to replace
+the characteristic of $-f$.  Monotonicity from Lemma 4.4 and the definition
+of $\rho$ give the displayed constant.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{pointwiseShiftEstimate_of_wellDefined} in
+\leanfile{LogDerivative/ShiftEstimate.lean}.
+\end{leanproof}
+
+\begin{lemma}[4.6 --- Growth shift]
+\paperlabel{lem:4.6}
+\lean{NthTropicalNevanlinna.growthShiftLemma}
+\leanok
+\uses{def:nevanlinna-quantities}
+Let $T:[0,\infty)\to[0,\infty)$ be continuous and nondecreasing with
+hyper-order $\rho_2<1$.  If $c>0$ and $0<\sigma<1-\rho_2$, then outside a set
+of finite logarithmic measure,
+\[
+                       T(r+c)=T(r)+o\!\left(\frac{T(r)}{r^\sigma}\right).
+\]
+\end{lemma}
+
+\begin{proof}
+\leanok
+Choose $\widetilde\sigma$ with
+$\sigma<\widetilde\sigma<1-\rho_2$.  If $T$ eventually vanishes there is
+nothing to prove; otherwise take $R>\max\{1,c\}$ with $T(R)>0$.  For
+$\eta>0$ set
+\[
+ F_\eta=\left\{r\geq R:
+ \frac{T(r+c)-T(r)}{T(r)}r^{\widetilde\sigma}\geq\eta\right\}.
+\]
+We prove that $F_\eta$ has finite logarithmic measure.  Suppose instead that
+$\int_{F_\eta}dt/t=\infty$.  Continuity makes $F_\eta$ closed and it must be
+unbounded.  Recursively choose
+\[
+ r_0=\min F_\eta,\qquad
+ r_{m+1}=\min(F_\eta\cap[r_m+c,\infty)).
+\]
+Then
+\[
+ F_\eta\subseteq\bigcup_{m\geq0}[r_m,r_m+c],\qquad
+ T(r_{m+1})\geq
+ \left(1+\frac{\eta}{r_m^{\widetilde\sigma}}\right)T(r_m).       \tag{4.6.1}
+\]
+
+For every $\varepsilon>0$, infinitely many $m$ satisfy
+$r_m<m^{1+\varepsilon}$.  Otherwise, from the covering and
+$\log(1+x)\leq x$,
+\[
+ \int_{F_\eta}\frac{dt}{t}
+ \leq C+\sum_{m\gg1}\log\frac{r_m+c}{r_m}
+ \leq C+c\sum_{m\gg1}m^{-1-\varepsilon}<\infty,
+\]
+a contradiction.  Choose $\varepsilon$ so that
+$1/(1+\varepsilon)>\widetilde\sigma$ and pass to such a subsequence.
+Iterating (4.6.1), using $r_k\leq r_m$, and then
+$\log(1+x)\geq x/2$ for small $x>0$, gives
+\[
+ \log T(r_m)\geq C_0+
+ \frac{\eta m}{2r_m^{\widetilde\sigma}}.
+\]
+The right side tends to infinity, and a second logarithm yields
+\[
+ \frac{\log\log T(r_m)}{\log r_m}
+ \geq\frac{\log m}{\log r_m}-\widetilde\sigma+o(1)
+ \geq\frac1{1+\varepsilon}-\widetilde\sigma+o(1).
+\]
+Thus $\rho_2\geq1/(1+\varepsilon)-\widetilde\sigma$; letting
+$\varepsilon\downarrow0$ contradicts
+$\widetilde\sigma<1-\rho_2$.  Hence $F_\eta$ has finite logarithmic measure.
+
+Take $E=F_1$.  For $r\notin E$,
+\[
+ 0\leq T(r+c)-T(r)<\frac{T(r)}{r^{\widetilde\sigma}}
+ =\frac{T(r)}{r^\sigma}r^{-(\widetilde\sigma-\sigma)},
+\]
+and the final factor tends to zero.  This is the claimed estimate.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{growthShiftLemma} in \leanfile{LogDerivative/GrowthShiftProof.lean}.
+\end{leanproof}
+
+\begin{theorem}[4.7 --- Pointwise logarithmic derivative]
+\paperlabel{thm:4.7}
+\lean{NthTropicalNevanlinna.pointwiseLogarithmicDerivative}
+\leanok
+\uses{lem:4.5,lem:4.6}
+If $f$ is well-defined, $c\neq0$, $\rho_2(f)<1$, and
+$0<\sigma<1-\rho_2(f)$, then there is a set $E$ of finite logarithmic
+measure such that, for both $\delta=\pm1$,
+\[
+ |f(\delta r+c)-f(\delta r)|
+ =o\!\left(\frac{T(r,f)}{r^\sigma}\right)
+ \quad(r\to\infty, r\notin E).
+\]
+\end{theorem}
+
+\begin{proof}
+\leanok
+We first prove the power-step estimate used below.  If $T$ is nondecreasing,
+has hyper-order $\rho_2$, and $0<q<1-\rho_2$, then outside a set $E_q$ of
+finite logarithmic measure,
+\[
+                         T(r+r^q)\leq2T(r).                       \tag{4.7.1}
+\]
+Choose $\rho_2<\beta<1-q$.  Eventually $|\log T(x)|\leq x^\beta$ after
+discarding the identically-zero case.  Put $U=\log T$ and let
+$F=\{x:U(x+x^q)-U(x)\geq\log2\}$.  On the exponential annulus
+$[a_m,b_m]=[Re^m,Re^{m+1}]$, set $H_m=b_m^q$.  Monotonicity and the
+sliding-slope identity give
+\begin{align*}
+ \int_{F\cap[a_m,b_m]}\frac{dx}{x}
+ &\leq\frac{H_m}{(\log2)a_m}
+       \bigl(U(b_m+H_m)-U(a_m)\bigr)\\
+ &\leq C a_m^{q+\beta-1}.
+\end{align*}
+The geometric series converges because $q+\beta-1<0$.  Hence $F$ has finite
+logarithmic measure, and exponentiation outside $F$ proves (4.7.1).
+
+Apply this to $T(r,f)$ with
+$q=(\sigma+1-\rho_2)/2$, so $\sigma<q<1-\rho_2$.  For large
+$r\notin E_q$, let $s=r+|c|$ and $A_r=(r+r^q)/s$.  Then
+\[
+ (A_r-1)s=r^q-|c|,\qquad A_rs=r+r^q.
+\]
+Eventually $A_r>1$ and the radius hypothesis of Lemma 4.5 holds.  Lemma 4.5
+and (4.7.1) therefore imply, simultaneously for $\delta=\pm1$,
+\[
+ |f(\delta r+c)-f(\delta r)|
+ \leq\frac{32|c|}{r^q-|c|}
+ \left(T(r+r^q,f)+\frac{|f(0)|}{2}\right)
+ \leq C\frac{T(r,f)}{r^q}.
+\]
+Here, if $T(R_0,f)>0$, monotonicity absorbs $|f(0)|$ into $T(r,f)$.
+Since $q>\sigma$, the last quantity is
+$r^{\sigma-q}T(r,f)/r^\sigma=o(T(r,f)/r^\sigma)$.
+
+If $T(r,f)\equiv0$, apply Lemma 4.5 with any sufficiently large constant
+$A$ in place of $\alpha$ and let $A\to\infty$; this forces every displayed
+shift difference to be zero.  Thus the same conclusion holds in the
+degenerate case, and one common exceptional set works for both signs.
+\end{proof}
+
+\begin{corollary}[4.8 --- Logarithmic derivative lemma]
+\paperlabel{cor:4.8}
+\lean{NthTropicalNevanlinna.logarithmicDerivativeProximity}
+\leanok
+\uses{thm:4.7}
+Under the same hypotheses,
+\[
+ m\bigl(r,f(x+c)\oslashT f(x)\bigr)
+ =o\!\left(\frac{T(r,f)}{r^\sigma}\right)
+\]
+outside a set of finite logarithmic measure.
+\end{corollary}
+
+\begin{proof}
+\leanok
+At the two radial endpoints, $u^+\leq|u|$.  Average the two estimates from
+Theorem 4.7.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{pointwiseLogarithmicDerivative} and
+\leanfile{logarithmicDerivativeProximity} in \leanfile{LogDerivative/Main.lean}.
+\end{leanproof}
+
+\section{Holomorphic curves}
+
+\begin{definition}[Tropical holomorphic curves]
+\paperlabel{def:curve-objects}
+\lean{NthTropicalNevanlinna.TropicalHolomorphicCurveRepresentation,NthTropicalNevanlinna.NthTropicalHolomorphicCurve,NthTropicalNevanlinna.cartanCharacteristic}
+\leanok
+\uses{def:nth-meromorphic,def:multiplicity}
+An $n$-th tropical holomorphic curve is a projective class
+$f=[f_0:\cdots:f_m]$ of tropical entire coordinates whose maximum order is
+$n$.  A representation is reduced when the coordinates have no common
+$j$-th root.  With $F(x)=\max_i f_i(x)$, define
+\[
+                  T_f(r)=\frac{F(r)+F(-r)}2-F(0).
+\]
+\end{definition}
+
+\begin{leanproof}
+\leanfile{TropicalHolomorphicCurveRepresentation},
+\leanfile{NthTropicalHolomorphicCurve}, and \leanfile{cartanCharacteristic} in
+\leanfile{Curves/Basic.lean} and \leanfile{Curves/Characteristic.lean}.
+\end{leanproof}
+
+\begin{proposition}[5.2 --- Representation invariance]
+\paperlabel{prop:5.2}
+\lean{NthTropicalNevanlinna.cartanCharacteristic_eq_of_reducedCurveRepresentations}
+\leanok
+\uses{prop:2.2,def:curve-objects}
+The Cartan characteristic is independent of the reduced representation.
+\end{proposition}
+
+\begin{proof}
+\leanok
+Two reduced representatives differ by a common function $\lambda$.  A root
+or pole of $\lambda$ would create a common root after adding or subtracting
+it from every coordinate, contradicting reducedness.  Thus $\lambda$ is
+nowhere-vanishing entire.  Proposition 2.2 gives
+$\bigl(\lambda(r)+\lambda(-r)\bigr)/2=\lambda(0)$, so the common additive
+change cancels from the defining expression for $T_f$.
+\end{proof}
+
+\begin{proposition}[5.3 --- Projective-pair characteristic]
+\paperlabel{prop:5.3}
+\lean{NthTropicalNevanlinna.cartanCharacteristic_projectivePair_eq_characteristic_sub}
+\leanok
+\uses{thm:3.5,def:curve-objects}
+If $g=g_1-g_0$ and $[g_0:g_1]$ is reduced, then
+\[
+ T_{[g_0:g_1]}(r)=T(r,g)-g^+(0).
+\]
+\end{proposition}
+
+\begin{proof}
+\leanok
+Since $\max(g_0,g_1)=g_0+(g_1-g_0)^+$, substitute this identity into the
+Cartan characteristic.  Jensen applied to $g_0$ replaces its endpoint mean
+minus $g_0(0)$ by the difference of its root and pole counts.  Reducedness
+identifies those counts with the corresponding pole counts of $g_1-g_0$;
+the remaining endpoint term is $m(r,g)$, yielding the formula.
+\end{proof}
+
+\begin{proposition}[5.4 --- Coordinate quotient bound]
+\paperlabel{prop:5.4}
+\lean{NthTropicalNevanlinna.characteristic_coordinateQuotient_le_upToConstant}
+\leanok
+\uses{prop:2.2,prop:5.3}
+For every coordinate quotient of a reduced curve,
+\[
+                       T(r,f_i-f_\ell)\leq T_f(r)+O(1).
+\]
+\end{proposition}
+
+\begin{proof}
+\leanok
+Construct the common-root part $u$ of $f_i$ and $f_\ell$ by taking the
+minimum of each positive multiplicity and fixing $u(0)=f_\ell(0)$.  Then
+$h_i=f_i-u$ and $h_\ell=f_\ell-u$ form a reduced pair.  Proposition 5.3 and
+$\max(h_i,h_\ell)=\max(f_i,f_\ell)-u$ give
+\[
+ T(r,f_i-f_\ell)
+ \leq\frac12\sum_{\delta=\pm1}
+   \bigl(\max_k f_k(\delta r)-u(\delta r)\bigr)+O(1).
+\]
+Because $u$ is entire, Proposition 2.2 bounds its negative endpoint mean by
+a constant.  The right side is therefore at most $T_f(r)+O(1)$.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{cartanCharacteristic_eq_of_reducedCurveRepresentations},
+\leanfile{cartanCharacteristic_projectivePair_eq_characteristic_sub}, and
+\leanfile{characteristic_coordinateQuotient_le_upToConstant} in
+\leanfile{Curves/Characteristic.lean}.
+\end{leanproof}
+
+\begin{definition}[Homogeneous and Fermat tropical polynomials]
+\paperlabel{def:homogeneous-polynomials}
+\lean{NthTropicalNevanlinna.HomogeneousTropicalPolynomial,NthTropicalNevanlinna.HomogeneousTropicalPolynomial.eval,NthTropicalNevanlinna.HomogeneousTropicalPolynomial.curveComposition,NthTropicalNevanlinna.TropicalHomogeneousFermatPolynomial}
+\leanok
+\uses{def:curve-objects}
+A homogeneous tropical polynomial of degree $d$ is a finite maximum of
+monomials
+\[
+ P(x_0,\ldots,x_m)=\max_{|I|=d}
+   \left(\alpha_I+\sum_{k=0}^m I_kx_k\right),
+ \qquad |I|=\sum_kI_k=d.
+\]
+Composition is
+$(P\circ f)(x)=\max_{|I|=d}(\alpha_I+\sum_kI_kf_k(x))$.  A tropical Fermat
+polynomial retains only the pure terms $\max_i(\alpha_i+dx_i)$.
+\end{definition}
+
+\begin{example}[5.5 --- Counting dominates curve growth]
+\paperlabel{ex:5.5}
+\lean{NthTropicalNevanlinna.example55_characteristic_isLittleO_integratedCounting}
+\leanok
+\uses{def:homogeneous-polynomials,def:nevanlinna-quantities}
+Let $P(x_0,x_1)=x_0\oplusT x_1$, $f_0(x)=\operatorname{sgn}(x)x^2$, and
+\[
+ f_1(x)=\begin{cases}
+ -\frac12,&x\leq0,\\
+ (4k+2)x-2k(2k+2)-\frac12,&2k\leq x<2k+2,\quad k\geq0.
+ \end{cases}
+\]
+Then $T_f(r)=\frac12r^2(1+o(1))$, whereas
+\[
+ \sum_{j=1}^2N^{(j)}(r,P\circ f)\geq
+ \frac12\sum_{i=1}^{\lfloor r/2\rfloor}(r-2i)^2
+ =\frac{r^3}{12}(1+o(1)).
+\]
+Consequently $T_f=o(\sum_jN^{(j)}(r,P\circ f))$.
+\end{example}
+
+\begin{proof}
+\leanok
+On $[2k,2k+2)$, solving $x^2=f_1(x)$ gives
+$x=2k+1\pm\sqrt2/2$.  At the lower crossing the maximum switches from the
+affine branch to the quadratic branch and its normalized second-jet jump is
+$-1$, so this is a genuine second-order pole of multiplicity $1$.  Summing
+their integrated weights gives the displayed lower bound.  The maximum of
+the two coordinates has quadratic endpoint growth $r^2+o(r^2)$ and vanishes
+at the central normalization up to a constant, giving
+$T_f(r)=r^2/2+o(r^2)$.  Cubic growth dominates quadratic growth.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{example55_characteristic_isLittleO_integratedCounting} in
+\leanfile{Counterexamples.lean}.
+\end{leanproof}
+
+\begin{theorem}[5.6 --- Tropical polynomial second main theorem]
+\paperlabel{thm:5.6}
+\lean{NthTropicalNevanlinna.secondMain_homogeneousTropicalPolynomial}
+\leanok
+\uses{thm:3.5,def:homogeneous-polynomials,def:curve-objects}
+Let $P$ be homogeneous of degree $d>0$ and contain every pure power with a
+finite coefficient.  For a nonconstant reduced curve,
+\[
+ T_f(r)=\frac1d\left(
+ \sum_{j=1}^nN^{(j)}(r,-P\circ f)
+ -\sum_{j=1}^nN^{(j)}(r,P\circ f)\right)+O(1).
+\]
+\end{theorem}
+
+\begin{proof}
+\leanok
+The pure terms and the maximum coefficient give uniform bounds
+\[
+ \gamma+d\max_i f_i(x)\leq P\circ f(x)
+ \leq\beta+d\max_i f_i(x).
+\]
+Apply Jensen to $P\circ f$:
+\[
+ \sum_jN^{(j)}(r,-P\circ f)-\sum_jN^{(j)}(r,P\circ f)
+ =\frac{P\circ f(r)+P\circ f(-r)}2-P\circ f(0).
+\]
+Average the two pointwise bounds.  The right side equals $dT_f(r)+O(1)$;
+division by $d$ proves the formula.
+\end{proof}
+
+\begin{corollary}[5.7 --- First-order Fermat case]
+\paperlabel{cor:5.7}
+\lean{NthTropicalNevanlinna.secondMain_firstOrder_tropicalFermat}
+\leanok
+\uses{thm:5.6}
+For a nonconstant reduced first-order curve and a tropical Fermat polynomial
+of degree $d>0$,
+\[
+ T_f(r)=\frac1dN^{(1)}(r,-P\circ f)+O(1).
+\]
+\end{corollary}
+
+\begin{proof}
+\leanok
+Every first-order entire coordinate is convex piecewise linear; multiplication
+by $d>0$, addition of constants, and a finite maximum preserve convexity.
+Thus $P\circ f$ is tropical entire and its pole count vanishes.  Apply
+Theorem 5.6.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{secondMain_homogeneousTropicalPolynomial} and
+\leanfile{secondMain_firstOrder_tropicalFermat} in
+\leanfile{Curves/SecondMain.lean}.  Composition closure is constructed, not
+assumed.
+\end{leanproof}
+
+\begin{theorem}[5.8 --- Ordinary Fermat estimate]
+\paperlabel{thm:5.8}
+\lean{NthTropicalNevanlinna.secondMain_ordinaryFermat}
+\leanok
+\uses{def:curve-objects,def:nevanlinna-quantities}
+Let $f$ be a nonconstant reduced first-order curve and
+$\mathcal P(x)=\sum_{i=0}^m\alpha_ix_i^n$ with $n\geq1$ and $\alpha_i>0$.
+If $r/T_f(r)\to0$, then
+\[
+ \theta T_f(r)^n
+ \leq \sum_{j=1}^nN^{(j)}(r,-\mathcal P\circ f)+o(T_f(r)^n)
+ \leq \Theta T_f(r)^n,
+\]
+where $\theta=\min_i\alpha_i$ and
+$\Theta=2^{n-1}\sum_i\alpha_i$.
+\end{theorem}
+
+\begin{proof}
+\leanok
+On a linear germ $g(x)=kx+b$,
+\[
+ \frac{(g^n)^{(j)}}{j!}=\binom njg^{,n-j}k^j,
+\]
+so every singularity of $f_i^n$ lies at a singularity of $f_i$ or at the
+origin.  A first-order entire coordinate is convex and has one of two tail
+types: its two slopes eventually point outward, or all slopes have one weak
+sign.  In the first case all sufficiently remote jumps of $f_i^n$ are roots,
+and the compact remainder is $O(r^n)$.  In the second, at most one sign
+crossing occurs; comparison with the affine tail and first-order Jensen gives
+a total remote contribution $O(r^n)$.  Since $r=o(T_f)$,
+\[
+                  \sum_{j=1}^nN^{(j)}(r,f_i^n)=o(T_f(r)^n).
+\]
+Subadditivity of pole counting and positive homogeneity give the same estimate
+for $\mathcal P\circ f$.
+
+Jensen now yields
+\[
+ \sum_{j=1}^nN^{(j)}(r,-\mathcal P\circ f)
+ =\frac12\sum_{\delta=\pm1}\mathcal P\circ f(\delta r)
+   +o(T_f(r)^n).
+\]
+Put $F=\max_i f_i$.  The affine tails just analyzed show that any negative
+endpoint is $o(T_f)$, while
+$T_f=(F(r)+F(-r))/2+O(1)$.  Convexity of the $n$-th power and
+$a^n+b^n\leq(a+b)^n$ for nonnegative $a,b$ give
+\[
+ \theta T_f(r)^n+o(T_f^n)
+ \leq\frac12\sum_{\delta=\pm1}\sum_i\alpha_i f_i(\delta r)^n
+ \leq2^{n-1}\Bigl(\sum_i\alpha_i\Bigr)T_f(r)^n+o(T_f^n).
+\]
+Combining the last two displays proves both inequalities.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{secondMain_ordinaryFermat} in \leanfile{Curves/Fermat.lean}.
+\end{leanproof}
+
+\begin{example}[5.9 --- Necessity of the growth hypothesis]
+\paperlabel{ex:5.9}
+\lean{NthTropicalNevanlinna.example59_ambientReciprocalCounting}
+\leanok
+\uses{thm:5.8}
+For $f=[0:2x]$ and $\mathcal P(x_0,x_1)=x_0^2+2x_1^2$,
+\[
+ T_f(r)=r,\qquad \mathcal P\circ f=8x^2,\qquad
+ \sum_{j=1}^2N^{(j)}(r,-\mathcal P\circ f)=8r^2.
+\]
+Thus $r/T_f(r)=1$, so Theorem 5.8 does not apply.
+\end{example}
+
+\begin{proof}
+\leanok
+The coordinate maximum is $\max(0,2x)$, whose endpoint mean is $r$.  The
+function $8x^2$ has only a second-order root at $0$, of multiplicity $16$;
+the factor $1/2$ in the integrated count gives $8r^2$.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{example59_ambientReciprocalCounting} in
+\leanfile{Curves/FermatExamples.lean}.
+\end{leanproof}
+
+\begin{example}[5.10 --- Sharp constants]
+\paperlabel{ex:5.10}
+\lean{NthTropicalNevanlinna.example510_concrete_conclusions}
+\leanok
+\uses{thm:5.8}
+Define
+\[
+ f_1(x)=\begin{cases}0,&x\leq1,\\
+ (2k-1)x-(2k^2-1),&2k-1\leq x<2k+1, k\geq1,
+ \end{cases}
+\]
+and
+\[
+ f_2(x)=\begin{cases}0,&x\leq2,\\
+ 2kx-2k(k+1),&2k\leq x<2k+2, k\geq1.
+ \end{cases}
+\]
+For $g=[0:f_1]$, $h=[f_1:f_2]$, and $P=x_0+x_1$,
+\begin{align*}
+ T_g(r)&=N^{(1)}(r,-P\circ g)=\frac14r^2+o(r^2),\\
+ T_h(r)&=\frac14r^2+o(r^2),\qquad
+ N^{(1)}(r,-P\circ h)=\frac12r^2+o(r^2).
+\end{align*}
+Thus the lower and upper constants in Theorem 5.8 are sharp.
+\end{example}
+
+\begin{proof}
+\leanok
+Directly on the defining intervals,
+$f_1(r)=r^2/2+O(r)$, $f_2(r)=r^2/2+O(r)$, and their maximum has the same
+asymptotic; all three functions vanish on the negative tail.  Hence the
+Cartan endpoint average for either curve is $r^2/4+o(r^2)$.  The functions
+$f_1$ and $f_1+f_2$ are entire, so Jensen identifies their reciprocal counts
+with their endpoint means.  These are respectively $r^2/4+o(r^2)$ and
+$r^2/2+o(r^2)$, proving both assertions.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{example510_concrete_conclusions} in
+\leanfile{Curves/FermatExamples.lean}.
+\end{leanproof}
+
+\section{Casoratian truncation}
+
+\begin{definition}[Shifts, partial counts, and Casoratian]
+\paperlabel{def:casoratian-data}
+\lean{NthTropicalNevanlinna.forwardShift,NthTropicalNevanlinna.partialIntegratedCounting,NthTropicalNevanlinna.tropicalCasoratian}
+\leanok
+\uses{def:nevanlinna-quantities}
+For $k\geq0$, put $\bar g^{[k]}(x)=g(x+k)$.  For a Borel interval $A$, the
+partial integrated count is
+\[
+ N_A^{(j)}(r,f)=\frac12
+ \sum_{\substack{x\in A\cap(-r,r)\\ \omega_f^{(j)}(x)<0}}
+ |\omega_f^{(j)}(x)|(r-|x|)^j.
+\]
+For entire $g_0,\ldots,g_m$, define
+\[
+ C_0(g_0,\ldots,g_m)(x)=
+ \max_{\pi\in S_{m+1}}\sum_{i=0}^m g_i(x+\pi(i)).
+\]
+\end{definition}
+
+\begin{theorem}[Finite-root first-order identity]
+\paperlabel{thm:finite-root-identity}
+\lean{NthTropicalNevanlinna.FiniteFirstOrderRootData.integratedRootCounting_eq_affine,NthTropicalNevanlinna.FiniteRootCasoratianData.countingDifference_eventually_constant,NthTropicalNevanlinna.FiniteRootCasoratianData.casoratianCounting_isEquivalent_coordinateCountingSum}
+\leanok
+\uses{thm:3.5,def:casoratian-data}
+Let $f_0,\ldots,f_m$ and $C_0=C_0(f_0,\ldots,f_m)$ be first-order entire
+functions with finite root sets.  Write their eventual slopes as
+$k_i^\pm,k_C^\pm$, and assume
+$a=\frac12\sum_i(k_i^+-k_i^-)>0$.  Then
+\[
+ k_C^+-k_C^-=\sum_i(k_i^+-k_i^-),
+\]
+and there are constants $M_i,M_C$ such that, for all sufficiently large $r$,
+\[
+ N(r,-f_i)=\frac{k_i^+-k_i^-}{2}r-M_i,\qquad
+ N(r,-C_0)=ar-M_C.
+\]
+Consequently
+\[
+ N\!\left(r,-C_0(f_0,\ldots,f_m)\right)
+ \sim\sum_{i=0}^mN(r,-f_i).
+\]
+\end{theorem}
+
+\begin{proof}
+\leanok
+Choose $R$ beyond all roots and all affine-tail thresholds.  Jensen applied
+at two radii above $R$ shows that the total root multiplicity of an entire
+first-order function is its right tail slope minus its left tail slope.  If
+$X_i,X_C$ are the fixed finite root sets, put
+\[
+ M_i=\frac12\sum_{x\in X_i}\omega_{f_i}(x)|x|,\qquad
+ M_C=\frac12\sum_{x\in X_C}\omega_{C_0}(x)|x|.
+\]
+Expanding the integrated counts now gives the two affine formulas.  Every
+permutation summand defining $C_0$ has right slope $\sum_i k_i^+$ and left
+slope $\sum_i k_i^-$; their finite maximum has the same slopes.  Subtracting
+the affine formulas leaves the constant $\sum_iM_i-M_C$.  Since their common
+leading coefficient $a$ is positive, this constant is little-$o$ of either
+side and the asymptotic equivalence follows.
+\end{proof}
+
+\begin{leanproof}
+The stronger eventual affine identities are
+\leanfile{FiniteFirstOrderRootData.integratedRootCounting_eq_affine},
+\leanfile{FiniteRootCasoratianData.countingDifference_eventually_constant}, and
+\leanfile{FiniteRootCasoratianData.casoratianCounting_isEquivalent_coordinateCountingSum} in
+\leanfile{Truncated/FiniteRoots.lean}.
+\end{leanproof}
+
+\begin{lemma}[6.1 --- Casoratian common factor]
+\paperlabel{lem:6.1}
+\lean{NthTropicalNevanlinna.tropicalCasoratian_commonFactor,NthTropicalNevanlinna.casoratian_commonFactor_of_entire}
+\leanok
+\uses{def:casoratian-data}
+For tropical entire $f_0,\ldots,f_m,g$,
+\[
+ C_0(f_0\otimesT g,\ldots,f_m\otimesT g)
+ =g\otimesT\bar g\otimesT\cdots\otimesT\bar g^{[m]}
+  \otimesT C_0(f_0,\ldots,f_m).
+\]
+\end{lemma}
+
+\begin{proof}
+\leanok
+Expand the Casoratian as the maximum over permutations.  Every permutation
+uses each shift $0,\ldots,m$ exactly once, so the shifted copies of $g$ factor
+out as the same additive term in every summand.  Maximum commutes with adding
+this common term.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{tropicalCasoratian_commonFactor} and
+\leanfile{casoratian_commonFactor_of_entire} in
+\leanfile{Truncated/Casoratian.lean}.
+\end{leanproof}
+
+\begin{theorem}[6.2 --- Truncated second main theorem]
+\paperlabel{thm:6.2}
+\lean{NthTropicalNevanlinna.truncatedSecondMain,NthTropicalNevanlinna.truncatedSecondMainPaperStatement_verified}
+\leanok
+\uses{thm:3.5,cor:4.8,prop:5.4,lem:6.1}
+Let $f=[f_0:\cdots:f_m]$ be a nonconstant reduced $n$-th tropical
+holomorphic curve.  Suppose that for some $\ell$ every $f_i-f_\ell$ is
+well-defined, that $\rho_2(T_f)=\rho_2<1$, and that
+$0<\sigma<1-\rho_2$.  Then, outside a set of finite logarithmic measure,
+\begin{align*}
+&\left|\sum_{i=0}^m\sum_{j=1}^nN^{(j)}(r,-f_i)
+-\sum_{j=1}^nN^{(j)}\!\left(r,-C_0(f_0,\ldots,f_m)\right)\right|\\
+&\quad\leq
+\sum_{j=1}^n\left|N^{(j)}\!\left(r,C_0(f_0,\ldots,f_m)\right)
+-\sum_{i=0}^mN^{(j)}(r,\bar f_i^{[i]})\right|\\
+&\qquad+
+\sum_{i=0}^m\sum_{j=1}^{\lfloor n/2\rfloor}
+\left|N_{[-2i,0]}^{(2j)}(r,-\bar f_i^{[i]})
+-N_{[-i,i]}^{(2j)}(r,-f_i)\right|
++o\!\left(\frac{T_f(r)}{r^\sigma}\right).
+\end{align*}
+\end{theorem}
+
+\begin{proof}
+\leanok
+For a root $x$ of $f_i$, translation sends it to $x-k$.  The signed
+multiplicity is unchanged for odd $j$ and whenever $x$ and $x-k$ have the
+same sign.  Thus only even orders crossing the origin contribute a defect,
+which is exactly
+\[
+ N_{[-2k,0]}^{(2j)}(r,-\bar f_i^{[k]})
+ -N_{[-k,k]}^{(2j)}(r,-f_i).
+\]
+Partition the remaining roots into the central region and the four boundary
+strips determined by $r-k,r,r+k$.  Monotonicity of root counting sandwiches
+their total contribution between the corresponding counts at $r-k$ and
+$r+k$.  Proposition 5.4 dominates every coordinate quotient characteristic
+by $T_f+O(1)$; Lemma 4.6 then makes each fixed-radius increment
+$o(T_f/r^\sigma)$.  Summing the finitely many $i,j,k$ proves the shifted-count
+identity used in the displayed right side.
+
+By Lemma 6.1, subtracting the reference coordinate $f_\ell$ from all
+coordinates only adds the common shifted factor
+$\sum_{k=0}^m f_\ell(x+k)$ to the Casoratian.  At either endpoint $\delta r$,
+choose a maximizing permutation $\pi_\delta$.  Theorem 4.7, applied to each
+well-defined quotient $f_i-f_\ell$, gives
+\[
+ \left|C_0(f_0,\ldots,f_m)(\delta r)
+       -\sum_{i=0}^m\bar f_i^{[i]}(\delta r)\right|
+ =o(T_f(r)/r^\sigma).
+\]
+Indeed, after removing the common factor the difference is bounded by the
+finite sum of shift differences between $\pi_\delta(i)$ and $i$.
+
+Finally apply the $n$-th Jensen identity to $C_0$ and separately to every
+$\bar f_i^{[i]}$.  Insert the shifted-count identity from the first paragraph
+and the endpoint estimate from the second, then apply the triangle inequality.
+This is exactly the asserted inequality.  Nonconstancy, convexity, and
+Proposition 5.4 imply the characteristic scale tends to infinity and absorb
+the finitely many $O(1)$ terms; no additional growth assumption is used.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{truncatedSecondMain} and
+\leanfile{truncatedSecondMainPaperStatement_verified} in
+\leanfile{Truncated/Main.lean}; shift transport and the exact even correction are
+in \leanfile{Truncated/ShiftCounting.lean}.
+\end{leanproof}
+
+\begin{example}[Higher-order correction terms are necessary]
+\paperlabel{ex:section6-obstruction}
+\lean{NthTropicalNevanlinna.section6Counterexample_exact_obstruction}
+\leanok
+\uses{thm:6.2}
+Let
+\[
+ f_0(x)=\begin{cases}-x^2,&x\leq0,\\x^2,&x>0,\end{cases}
+ \qquad
+ f_1(x)=\begin{cases}x^2,&x\leq0,\\-x^2,&x>0.\end{cases}
+\]
+Then $f=[f_0:f_1]$ is a well-defined second-order curve and
+\[
+ C_0(f_0,f_1)(x)=\begin{cases}
+ -2x-1,&x\leq-1,\\
+ 2x^2+2x+1,&-1<x\leq0,\\
+ 2x+1,&x>0.
+ \end{cases}
+\]
+Moreover $T_f(r)=r^2$, the coordinate reciprocal counts vanish, while
+\[
+                 \sum_{j=1}^2N^{(j)}(r,-C_0)=r^2.
+\]
+Hence the two explicit error sums in Theorem 6.2 cannot in general be
+replaced by $o(T_f/r^\sigma)$ when $n\geq2$.
+\end{example}
+
+\begin{proof}
+\leanok
+The coordinate maximum is $x^2$, giving $T_f(r)=r^2$.  The negatives of both
+coordinates are second-order entire, so their reciprocal counts are zero.
+Taking the maximum of the two Casoratian permutation sums yields the displayed
+three pieces.  Its only reciprocal-count contribution is the normalized
+second-order root at $0$; direct substitution gives integrated count $r^2$.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{section6Counterexample_exact_obstruction} in
+\leanfile{Counterexamples.lean}.
+\end{leanproof}
+
+\begin{corollary}[6.3 --- First-order truncated relation]
+\paperlabel{cor:6.3}
+\lean{NthTropicalNevanlinna.firstOrderTruncatedSecondMainPaperStatement_verified}
+\leanok
+\uses{thm:6.2}
+For a nonconstant reduced first-order curve satisfying the same hyper-order
+condition,
+\[
+ \sum_{i=0}^mN(r,-f_i)
+ =N\!\left(r,-C_0(f_0,\ldots,f_m)\right)
+ +o\!\left(\frac{T_f(r)}{r^\sigma}\right)
+\]
+outside a set of finite logarithmic measure.
+\end{corollary}
+
+\begin{proof}
+\leanok
+At first order there is no even-order correction.  The shifted coordinate
+functions and the Casoratian are tropical entire, so the two explicit pole
+count errors in Theorem 6.2 vanish.  The remaining term is the stated
+little-$o$ remainder.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{firstOrderTruncatedSecondMainPaperStatement_verified} in
+\leanfile{Truncated/Main.lean}.
+\end{leanproof}
+
+\begin{example}[The hyper-order condition in Corollary 6.3 is necessary]
+\paperlabel{ex:cor6.3-growth}
+\lean{NthTropicalNevanlinna.corollary63_CasoratianReciprocalCounting_isEquivalent_scaledCharacteristic,NthTropicalNevanlinna.corollary63_growthHypothesis_counterexample}
+\leanok
+\uses{prop:3.8,cor:6.3}
+Let $f=[0:e_\alpha]$ with $\alpha>1$.  Then
+$T_f(r)=T(r,e_\alpha)+O(1)$ has hyper-order $1$,
+$e_\alpha(x+1)=\alpha e_\alpha(x)$, and
+\[
+ C_0(0,e_\alpha)=\alpha e_\alpha.
+\]
+Consequently
+\begin{align*}
+ N(r,-0)+N(r,-e_\alpha)&\sim T(r,e_\alpha),\\
+ N(r,-C_0(0,e_\alpha))&\sim\alpha T(r,e_\alpha),
+\end{align*}
+so the conclusion of Corollary 6.3 fails.
+\end{example}
+
+\begin{proof}
+\leanok
+The shift equation follows directly from the floor-function definition of
+$e_\alpha$.  Of the two Casoratian permutation sums, nonnegativity makes the
+shifted hyper-exponential the maximum, hence the Casoratian equals
+$\alpha e_\alpha$.  Proposition 3.8 gives hyper-order $1$.  Jensen gives the
+first asymptotic, and positive scalar homogeneity of multiplicities multiplies
+the second count by $\alpha$.  Since $\alpha>1$, the two leading terms cannot
+differ by the little-$o$ remainder required in Corollary 6.3.
+\end{proof}
+
+\begin{leanproof}
+\leanfile{corollary63_CasoratianReciprocalCounting_isEquivalent_scaledCharacteristic}
+and \leanfile{corollary63_growthHypothesis_counterexample} in
+\leanfile{Counterexamples.lean}.
+\end{leanproof}

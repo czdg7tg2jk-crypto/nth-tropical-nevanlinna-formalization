@@ -1,0 +1,29 @@
+% In this file you should put all LaTeX macros and settings to be used both by
+% the pdf version and the web version.
+% This should be most of your macros.
+
+% Source labels are written explicitly in the optional theorem titles.  Using
+% unnumbered environments avoids introducing a second, misleading numbering
+% scheme when auxiliary definitions and examples are included.
+\newtheorem*{theorem}{Theorem}
+\newtheorem*{proposition}{Proposition}
+\newtheorem*{lemma}{Lemma}
+\newtheorem*{corollary}{Corollary}
+
+\theoremstyle{definition}
+\newtheorem*{definition}{Definition}
+\newtheorem*{example}{Example}
+
+\theoremstyle{remark}
+\newtheorem*{leanproof}{Formalization map}
+
+\definecolor{LeanBlue}{HTML}{1F5A94}
+\newcommand{\leanfile}[1]{{\color{LeanBlue}\path{#1}}}
+\newcommand{\R}{\mathbb R}
+\newcommand{\N}{\mathbb N}
+\newcommand{\TP}{\mathbb{TP}}
+\newcommand{\oplusT}{\mathbin{\oplus}}
+\newcommand{\otimesT}{\mathbin{\otimes}}
+\newcommand{\oslashT}{\mathbin{\oslash}}
+\newcommand{\littleo}{o}
+\newcommand{\paperlabel}[1]{\label{#1}}
